@@ -1,4 +1,3 @@
 # stock_tools
-Various tools for accessing stock market data
 
-Uses Yahoo Finance APIs
+Tools to help with keeping track of stock investments
