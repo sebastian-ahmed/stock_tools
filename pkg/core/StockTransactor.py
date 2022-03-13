@@ -62,6 +62,9 @@ class StockTransactor:
         '''
         Prints a report of all sales
         '''
+        print('='*80)
+        print('SALES REPORT')
+        print('='*80)
         for brokerage in self._sale_items.keys():
             print(f'Brokerage: {brokerage}')
             for ticker in self._sale_items[brokerage].keys():
@@ -72,11 +75,17 @@ class StockTransactor:
         '''
         Prints a report of all remaining holdings
         '''
+        print('='*80)
+        print('HOLDINGS REPORT')
+        print('='*80)
         for brokerage in self._buy_transactions.keys():
             print(f'Brokerage: {brokerage}')
             for ticker in self._buy_transactions[brokerage].keys():
                 for tr in self._buy_transactions[brokerage][ticker].data:
-                    print(f'{ticker}: {tr.amount} shares')
+                    add_basis = ''
+                    if tr.add_basis > 0:
+                        add_basis = f' (Contains additional basis of {tr.add_basis} from previous wash sale)'
+                    print(f'{ticker}: {tr.amount} shares, cost-basis={tr.price * tr.amount + tr.add_basis}'+add_basis)
 
     def write_sales_file(self):
         total_proceeds = 0.0
@@ -314,8 +323,8 @@ class StockTransactor:
         )
         # Check if there is a wash sale trigger.
         # NOTE: The lot which is at the head of the FIFO cannot constitute the wash
-        #       sale trigger. Only buys following (newer) than the FIFO head can
-        #       be considered to counted to establish a "pre-buy" wash sale scenario
+        #       sale trigger. Only buys newer than the FIFO head can
+        #       be considered for establishing a "pre-buy" wash sale scenario
         wash_transaction = self.find_wash_trigger(sell_tr) 
         if wash_transaction and wash_transaction != buy_tr: # Filter out the head transaction
             if sale_item.gain < 0:
