@@ -276,7 +276,7 @@ class StockTransactor:
                 # it from the FIFO
                 fifo.head.is_sold = True
                 fifo.head.amount = 0
-                sale_items.append(self.create_sale_item(sell_tr=transaction,buy_tr=fifo.head,amount=rem_amount))
+                sale_items.append(self.create_sale_item(sell_tr=transaction,buy_tr=fifo.head,amount=rem_amount,last=True))
                 popped_entries.append(fifo.pop()) 
                 rem_amount = 0
 
@@ -288,12 +288,17 @@ class StockTransactor:
                 # comprising of the cost-basis and acquisition date may be different than the
                 # next buy transaction in the FIFO
                 fifo.head.is_sold = True
-                sale_items.append(self.create_sale_item(sell_tr=transaction,buy_tr=fifo.head,amount=fifo.head.amount))
+                sale_items.append(self.create_sale_item(sell_tr=transaction,buy_tr=fifo.head,amount=fifo.head.amount,last=True))
                 rem_amount  -= fifo.head.amount
                 popped_entries.append(fifo.pop()) 
 
         # If we got here, the sale was successful so we need to write all generated 
         # SaleItem objects to the main dict
+
+        # First subtract the value of the sales transaction object commission 
+        # from the last generated SaleItem object
+        sale_items[-1].comm = transaction.comm
+
         for sale_item in sale_items:
             if transaction.brokerage not in self._sale_items:
                 self._sale_items[transaction.brokerage] = {}
@@ -301,16 +306,23 @@ class StockTransactor:
                 self._sale_items[transaction.brokerage][transaction.ticker] = []
             self._sale_items[transaction.brokerage][transaction.ticker].append(sale_item)
 
-    def create_sale_item(self,sell_tr:StockTransaction,buy_tr:StockTransaction,amount:float)->SaleItem:
+        
+
+    def create_sale_item(self,sell_tr:StockTransaction,buy_tr:StockTransaction,amount:float,last=False)->SaleItem:
         '''
         Generates and returns a SaleItem object based on a sell and buy transaction and 
         the number of shares (amount) being sold at this iteration
         Modifies the sell transaction in the case of a wash sale by updating the relevant
         wash-sale fields
+        The last field indicates that this sale constitutes the remainder or entirety of 
+        the buy transaction. When this is True, we also apply the buy transaction commission
+        to the cost-bases
         '''
         # The cost-basis must take into account any previous wash sale disallowed amounts
         # that have not been cleared out.
-        cost_basis = buy_tr.add_basis + (buy_tr.price * amount) # FIXME, need to add the brokerage fees/commission
+        cost_basis = buy_tr.add_basis + (buy_tr.price * amount)
+        if last:
+            cost_basis += buy_tr.comm
         sale_item = (
             SaleItem(
                 brokerage=sell_tr.brokerage,

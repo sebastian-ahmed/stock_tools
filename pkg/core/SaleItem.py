@@ -25,14 +25,15 @@ class SaleItem:
         self.short_term    = self.is_short_term(date_acquired,date_sold)
         self.wash          = wash
 
-        self.disallowed_wash_amount = 0.0
+        self.comm  = 0.0 # Must be set after sale processing
+        self.disallowed_wash_amount = 0.0 # Must be set during sale processing
 
     @property
     def proceeds(self)->float:
         '''
-        Returns the proceeds from the sale
+        Returns the proceeds from the sale minus any commissions
         '''
-        return self.amount * self.sale_price # FIXME : Need to add sales commission
+        return (self.amount * self.sale_price) - self.comm
 
     @property
     def gain(self)->float:
