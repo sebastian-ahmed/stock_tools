@@ -1,4 +1,5 @@
 import json
+import csv
 import os.path
 from copy import deepcopy
 from datetime import date,timedelta
@@ -13,7 +14,7 @@ class StockTransactor:
     '''
     Implements the processing layer of stock transactions. An object of this class is 
     responsible for the following operations:
-    - Reading in of a stock transaction data file
+    - Reading in of a stock transaction data file (using either CSV or JSON formats)
     - Processing all transactions in the file
     - Reconciling sales relative to previous purchases using First-in-first-out (FIFO) semantics
     - Error checks
@@ -341,6 +342,8 @@ class StockTransactor:
         if wash_transaction and wash_transaction != buy_tr: # Filter out the head transaction
             if sale_item.gain < 0:
                 sale_item.wash = True
+                print(f'INFO: Wash Sale detected for {sell_tr.ticker} with sale date {sell_tr.date} with wash trigger buy on {wash_transaction.date}')
+
                 # If the pre-buy or post-buy is a share amount smaller than the amount of shares in this
                 # sale, we only "wash" the amount of shares bought, not the complete sale. This is why
                 # we have the "min" term.
@@ -392,11 +395,29 @@ class StockTransactor:
 
         # First we pre-read the entire file so we can store all transactions
         # for wash-sale analysis which requires looking at "future" transactions
+        
+        fformat = None
+        if fname.endswith('.csv'): # CSV file
+            print(f'Reading file {fname} as CSV')
+            fformat = 'csv'
+        elif fname.endswith('.json'): # JSON file
+            print(f'Reading file {fname} as JSON')
+            fformat = 'json'
+        
         with open(fname,'r') as f:
-            for line in f:
-                 if line.startswith('{'):
-                    tr = StockTransaction.from_dict(json.loads(line))
-                    self._file_transactions.append(tr)
+            if fformat == 'json':
+                for line in f:
+                    if line.startswith('{'):
+                        tr = StockTransaction.from_dict(json.loads(line))
+                        self._file_transactions.append(tr)
+            elif fformat == 'csv':
+                csv.register_dialect('stocks', delimiter=',', skipinitialspace=True)
+                reader = csv.DictReader(f,dialect='stocks')
+                for line in reader:
+                        tr = StockTransaction.from_dict(line)
+                        self._file_transactions.append(tr)
+            else:
+                raise RuntimeError(f'File {fname} is not a supported input format')
 
         for tr in self._file_transactions:
             # When we perform the re-build, we do not add these transactions to the current
@@ -441,6 +462,5 @@ class StockTransactor:
         for tr in self._file_transactions:
             tr_date = date.fromisoformat(tr.date)
             if tr.tr_type == 'buy' and tr_date >= d_minus_30 and tr_date <= d_plus_30 and not tr.is_sold:
-                #print(f'INFO: Wash Sale detected for {transaction.ticker} with sale date {transaction.date} with wash trigger by on {tr.date}')
                 return tr
         return None
