@@ -19,3 +19,14 @@ stock_data = StockTransactor('./pkg/examples/stocks_example.csv')
 stock_data.print_holdings_report()
 ```
 
+## Running examples
+You can run either the CSV or JSON examples from the command line as follows. First make sure you are at the top-level directory of this project:
+
+- CSV input file example
+```
+python -m pkg.examples.csv_input
+```
+- JSON input file example
+```
+python -m pkg.examples.json_input
+```
