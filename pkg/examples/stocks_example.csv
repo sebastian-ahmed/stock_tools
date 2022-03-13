@@ -1,0 +1,8 @@
+ticker, amount, price, comm, brokerage, date, tr_type
+TQQQ,  100, 100,  5, MyBroker_A, 2022-03-12, buy
+SPY, 100, 1000, 5, MyBroker_B, 2022-03-12, buy
+SPY, 75,  500,  5, MyBroker_B, 2022-06-25, sell
+SPY, 75,  300,  5, MyBroker_B, 2022-07-15, buy
+SPY, 100, 500,  5, MyBroker_B, 2022-07-16, sell
+SPY, 25,  100,  5, MyBroker_B, 2022-08-15, buy
+TQQQ,  50,  200,  5, MyBroker_A, 2023-03-12, sell
