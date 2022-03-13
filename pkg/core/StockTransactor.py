@@ -347,7 +347,7 @@ class StockTransactor:
                 # If the pre-buy or post-buy is a share amount smaller than the amount of shares in this
                 # sale, we only "wash" the amount of shares bought, not the complete sale. This is why
                 # we have the "min" term.
-                sale_item.disallowed_wash_amount = abs(sale_item.gain_per_share * (min(amount,wash_transaction.amount)))
+                sale_item.disallowed_wash_amount = round(abs(sale_item.gain_per_share * (min(amount,wash_transaction.amount))),2)
                 self._wash_sales[sell_tr.ticker] = sale_item.disallowed_wash_amount
         
         return sale_item
