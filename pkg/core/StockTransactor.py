@@ -3,7 +3,7 @@ import csv
 import os.path
 from copy import deepcopy
 from datetime import date,timedelta
-from typing import Any, List
+from typing import Any, Tuple
 from collections import defaultdict
 
 from pkg.core.StockTransaction import StockTransaction
@@ -59,58 +59,110 @@ class StockTransactor:
             return 0.0
         return sum([x.amount for x in self._buy_transactions[brokerage][ticker].data])
 
-    def print_sales_report(self):
+    def print_sales_report(self,date_range:Tuple[str,str]=None):
         '''
-        Prints a report of all sales
+        Prints a report of all sales. When no date_range is specified,
+        writes all sales, otherwise writes sales in the specified range.
+        When specifying a date range, a tuple of ISO format string dates must
+        be provided in the format:
+        date_range = ('YYYY-MM-DD','YYYY-MM-DD')
+
+        For example, to report all sales in the year 2022, specify:
+        date_range = ('2022-01-01','2022-12,31')
+
+        If the date range is negative a RuntimeError will be raised
         '''
-        print('='*80)
-        print('SALES REPORT')
-        print('='*80)
-        for brokerage in self._sale_items.keys():
-            print(f'Brokerage: {brokerage}')
-            for ticker in self._sale_items[brokerage].keys():
-                for sale in self._sale_items[brokerage][ticker]:
-                    print(f'{ticker}: {sale}')
+        print(self.sales_report_str(date_range))
 
     def print_holdings_report(self):
         '''
         Prints a report of all remaining holdings
         '''
-        print('='*80)
-        print('HOLDINGS REPORT')
-        print('='*80)
+        print(self.holdings_report_str())
+
+    def write_sales_report(self,date_range:Tuple[str,str]=None):
+        '''
+        Writes report of sales to report file. When no date_range is specified,
+        writes all sales, otherwise writes sales in the specified range.
+        When specifying a date range, a tuple of ISO format string dates must
+        be provided in the format:
+        date_range = ('YYYY-MM-DD','YYYY-MM-DD')
+
+        For example, to report all sales in the year 2022, specify:
+        date_range = ('2022-01-01','2022-12,31')
+
+        If the date range is negative a RuntimeError will be raised
+        '''
+        with open(self._o_file_name,'w') as f:
+            f.write(self.sales_report_str(date_range))
+
+    ###########################################################################
+    # Internal Methods
+    ###########################################################################
+
+
+    def sales_report_str(self,date_range:Tuple[str,str]=None)->str:
+        '''
+        Returns the sales report string for printing to screen or file
+        '''
+        ostr = '='*80+'\n'
+        ostr += 'SALES REPORT'
+
+        if date_range:
+            d1 = date.fromisoformat(date_range[0])
+            d2 = date.fromisoformat(date_range[1])
+            if d2 < d1:
+                raise RuntimeError(f'Specified a negative date range: from {d1} to {d2}')
+            ostr += f' for date range {d1} to {d2}'
+
+        ostr += '\n' + '='*80+'\n'
+
+        total_proceeds = 0.0
+        net_gain = 0.0
+        total_disallowed_wash = 0.0
+        for brokerage in self._sale_items.keys():
+            ostr += f'Brokerage: {brokerage}\n'
+            for ticker in self._sale_items[brokerage].keys():
+                if date_range: # Sales in a date-range
+                    sales_list = [
+                        x for x in self._sale_items[brokerage][ticker] 
+                        if
+                        date.fromisoformat(x.date_sold) >= d1 and 
+                        date.fromisoformat(x.date_sold) <= d2
+                        ]
+                else: # All sales
+                    sales_list = self._sale_items[brokerage][ticker]
+                total_proceeds += sum([x.proceeds for x in sales_list])
+                total_disallowed_wash += sum([x.disallowed_wash_amount for x in sales_list])
+                net_gain += sum([x.gain for x in sales_list])
+                if len(sales_list) == 0:
+                    ostr += 'No sales were found given the criteria\n'
+                    continue
+                for sale in sales_list:
+                    ostr += f'{ticker}: {sale}\n'
+        ostr += f'Total proceeds       = ${total_proceeds}\n'
+        ostr += f'Net gain (raw)       = ${net_gain}\n'
+        ostr += f'Net gain (effective) = ${round(net_gain+total_disallowed_wash,2)}\n'
+        ostr += f'Total of disallowed wash amounts = ${total_disallowed_wash}\n'
+
+        return ostr
+
+    def holdings_report_str(self):
+        '''
+        Returns the current holdings report string
+        '''
+        ostr = '='*80 +'\n'
+        ostr += 'HOLDINGS REPORT\n'
+        ostr += '='*80 + '\n'
         for brokerage in self._buy_transactions.keys():
-            print(f'Brokerage: {brokerage}')
+            ostr += f'Brokerage: {brokerage}\n'
             for ticker in self._buy_transactions[brokerage].keys():
                 for tr in self._buy_transactions[brokerage][ticker].data:
                     add_basis = ''
                     if tr.add_basis > 0:
                         add_basis = f' (Contains additional basis of {tr.add_basis} from previous wash sale)'
-                    print(f'{ticker}: {tr.amount} shares, cost-basis={tr.price * tr.amount + tr.add_basis}'+add_basis)
-
-    def write_sales_file(self):
-        total_proceeds = 0.0
-        net_gain = 0.0
-        total_disallowed_wash = 0.0
-        with open(self._o_file_name,'w') as f:
-            for brokerage in self._sale_items.keys():
-                f.write(f'Brokerage: {brokerage}\n')
-                for ticker in self._sale_items[brokerage].keys():
-                    sales_list = self._sale_items[brokerage][ticker]
-                    total_proceeds += sum([x.proceeds for x in sales_list])
-                    total_disallowed_wash += sum([x.disallowed_wash_amount for x in sales_list])
-                    net_gain += sum([x.gain for x in sales_list])
-                    for sale in sales_list:
-                        f.write(f'{ticker}: {sale}\n')
-            f.write(f'Total proceeds       = ${total_proceeds}\n')
-            f.write(f'Net gain (raw)       = ${net_gain}\n')
-            f.write(f'Net gain (effective) = ${round(net_gain+total_disallowed_wash,2)}\n')
-            f.write(f'Total of disallowed wash amounts = ${total_disallowed_wash}\n')
-
-
-    ###########################################################################
-    # Internal Methods
-    ###########################################################################
+                    ostr += f'{ticker}: {tr.amount} shares, cost-basis={tr.price * tr.amount + tr.add_basis}'+add_basis + '\n'
+        return ostr
 
     def buy(self,ticker:str,amount:int,price:float,date:Any=None,comm=0.0,brokerage=None):
         '''
