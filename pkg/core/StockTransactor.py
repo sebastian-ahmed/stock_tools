@@ -102,9 +102,10 @@ class StockTransactor:
                     net_gain += sum([x.gain for x in sales_list])
                     for sale in sales_list:
                         f.write(f'{ticker}: {sale}\n')
-            f.write(f'Total proceeds = ${total_proceeds}\n')
-            f.write(f'Net gain       = ${net_gain}\n')
-            f.write(f'Total of disallowed wash amounts = ${total_disallowed_wash}')
+            f.write(f'Total proceeds       = ${total_proceeds}\n')
+            f.write(f'Net gain (raw)       = ${net_gain}\n')
+            f.write(f'Net gain (effective) = ${round(net_gain+total_disallowed_wash,2)}\n')
+            f.write(f'Total of disallowed wash amounts = ${total_disallowed_wash}\n')
 
 
     ###########################################################################
