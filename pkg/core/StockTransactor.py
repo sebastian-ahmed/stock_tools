@@ -76,7 +76,7 @@ class StockTransactor:
             print(f'Brokerage: {brokerage}')
             for ticker in self._buy_transactions[brokerage].keys():
                 for tr in self._buy_transactions[brokerage][ticker].data:
-                    print(f'{ticker}: {tr}')
+                    print(f'{ticker}: {tr.amount} shares')
 
     def write_sales_file(self):
         total_proceeds = 0.0
@@ -156,31 +156,27 @@ class StockTransactor:
         '''
         Adds a StockTransaction object into a ticker FIFO for the specified brokerage
         '''
-        brokerage = transaction.brokerage
-        ticker = transaction.ticker
-        tr_date = transaction.date
-
-        if brokerage not in self._buy_transactions:
+        if transaction.brokerage not in self._buy_transactions:
             # Create a new sub-dict for this brokerage
-            self._buy_transactions[brokerage] = {}
-        if ticker not in self._buy_transactions[brokerage]:
+            self._buy_transactions[transaction.brokerage] = {}
+        if transaction.ticker not in self._buy_transactions[transaction.brokerage]:
             # Create a new sub-sub-dict for this ticker
-                self._buy_transactions[brokerage][ticker] = Fifo() # Create a new FIFO for this ticker
+                self._buy_transactions[transaction.brokerage][transaction.ticker] = Fifo() # Create a new FIFO for this ticker
 
         # Check date is older than last entry for this ticker
-        fifo = self._buy_transactions[brokerage][ticker]
+        fifo = self._buy_transactions[transaction.brokerage][transaction.ticker]
         if len(fifo) > 0:
-            d1 = date.fromisoformat(tr_date)
+            d1 = date.fromisoformat(transaction.date)
             d2 = date.fromisoformat(fifo.tail.date)
             if d1<d2:
-                print(f'ERROR: Tried to add an older transaction with date {tr_date}. Last transaction date is {fifo.tail.date}')
+                print(f'ERROR: Tried to add an older transaction with date {transaction.date}. Last transaction date is {fifo.tail.date}')
                 return
 
         # Add any past disallowed wash sale to additional basis
-        transaction.add_basis += self._wash_sales[ticker]
-        self._wash_sales[ticker] = 0.0 # Clear it out since we have consumed it
+        transaction.add_basis += self._wash_sales[transaction.ticker]
+        self._wash_sales[transaction.ticker] = 0.0 # Clear it out since we have consumed it
 
-        self._buy_transactions[brokerage][ticker].push(transaction)
+        self._buy_transactions[transaction.brokerage][transaction.ticker].push(transaction)
 
         if not skip_history:
             self.history_add(transaction)
@@ -188,11 +184,11 @@ class StockTransactor:
     def sell_transaction(self,transaction:StockTransaction,skip_history:bool=False):
         '''
         Attempts to perform a sell operation described by the StockTransaction object
-        by accessing added transactions. If the sale fails, a RuntimeError exception
-        is raised and the stock data remains unmodified
+        by accessing previous buy transactions. If the sale fails, an error message
+        if printed to the screen and the sale is discarded.
 
         Because a sale transaction may encompass many previous buy transactions, we
-        generate a SaleItem object for every by transaction in the span of the sale.
+        generate a SaleItem object for every buy transaction in the span of the sale.
         This is necessary for example not just because of variations in cost-basis
         but also that some sales may constitute long-term gains vs short-term. As such
         there are as many SaleItem objects created as there are buys in the span of the
@@ -202,30 +198,24 @@ class StockTransactor:
         # Implementation notes:
         # =====================
         # This method behaves as a simple state-machine by applying the sale transaction to
-        # relevant FIFO (selected by brokerage and ticker) until all shares defined in the
+        # relevant FIFO entries (selected by brokerage and ticker) until all shares defined in the
         # sale transaction are accounted for. Because there may be one or more buy
         # transactions that cover the sale, the main loop may have to iterate through
         # a number of entries in the FIFO
 
-        print(transaction)
         # First do some checking
-        brokerage = transaction.brokerage
-        ticker = transaction.ticker
-        amount = transaction.amount
-        tr_date = transaction.date
-
-        if brokerage not in self._buy_transactions:
-            raise RuntimeError(f'No data for brokerage {brokerage} found')
-        if ticker not in self._buy_transactions[brokerage]:
-            raise RuntimeError(f'Ticker symbol {ticker} not found in brokerage {brokerage}')
+        if transaction.brokerage not in self._buy_transactions:
+            raise RuntimeError(f'No data for brokerage {transaction.brokerage} found')
+        if transaction.ticker not in self._buy_transactions[transaction.brokerage]:
+            raise RuntimeError(f'Ticker symbol {transaction.ticker} not found in brokerage {transaction.brokerage}')
 
         # Check date is older than last entry for this ticker
-        fifo = self._buy_transactions[brokerage][ticker]
+        fifo = self._buy_transactions[transaction.brokerage][transaction.ticker]
         if len(fifo) > 0:
-            d1 = date.fromisoformat(tr_date)
+            d1 = date.fromisoformat(transaction.date)
             d2 = date.fromisoformat(fifo.tail.date)
             if  d1<d2 :
-                print(f'ERROR: Tried to add an older transaction with date {tr_date}. Last transaction date is {fifo.tail.date}')
+                print(f'ERROR: Tried to add an older transaction with date {transaction.date}. Last transaction date is {fifo.tail.date}')
                 return
 
         if not skip_history:
@@ -243,9 +233,8 @@ class StockTransactor:
         popped_entries = []
         sale_items = [] # A list of generated SaleItem objects for this sale transaction
                         # which is only committed to self._sale_items if a sale completes
-        rem_amount = amount
-        fifo = self._buy_transactions[brokerage][ticker]
-        print (f'amount = {fifo.head.amount}')
+        rem_amount = transaction.amount
+        fifo = self._buy_transactions[transaction.brokerage][transaction.ticker]
         while rem_amount > 0:
             if len(fifo) == 0:
                 # This is an error state because we still have remaining stock to sell, but
@@ -260,7 +249,7 @@ class StockTransactor:
                 if not skip_history:
                     self.history_delete_last()
                 #raise RuntimeError(f'Insufficient funds for sale of {amount} shares of {ticker}. Sale cancelled')
-                print(f'Insufficient funds for sale of {amount} shares of {ticker}. Sale cancelled')
+                print(f'Insufficient funds for sale of {transaction.amount} shares of {transaction.ticker}. Sale cancelled')
                 return
 
             elif fifo.head.amount > rem_amount:
@@ -290,18 +279,18 @@ class StockTransactor:
                 # comprising of the cost-basis and acquisition date may be different than the
                 # next buy transaction in the FIFO
                 fifo.head.is_sold = True
-                sale_items.append(self.create_sale_item(sell_tr=transaction,buy_tr=fifo.head,amount=rem_amount))
+                sale_items.append(self.create_sale_item(sell_tr=transaction,buy_tr=fifo.head,amount=fifo.head.amount))
                 rem_amount  -= fifo.head.amount
                 popped_entries.append(fifo.pop()) 
 
         # If we got here, the sale was successful so we need to write all generated 
         # SaleItem objects to the main dict
         for sale_item in sale_items:
-            if brokerage not in self._sale_items:
-                self._sale_items[brokerage] = {}
-            if ticker not in self._sale_items[brokerage]:
-                self._sale_items[brokerage][ticker] = []
-            self._sale_items[brokerage][ticker].append(sale_item)
+            if transaction.brokerage not in self._sale_items:
+                self._sale_items[transaction.brokerage] = {}
+            if transaction.ticker not in self._sale_items[transaction.brokerage]:
+                self._sale_items[transaction.brokerage][transaction.ticker] = []
+            self._sale_items[transaction.brokerage][transaction.ticker].append(sale_item)
 
     def create_sale_item(self,sell_tr:StockTransaction,buy_tr:StockTransaction,amount:float)->SaleItem:
         '''
@@ -328,7 +317,7 @@ class StockTransactor:
         #       sale trigger. Only buys following (newer) than the FIFO head can
         #       be considered to counted to establish a "pre-buy" wash sale scenario
         wash_transaction = self.find_wash_trigger(sell_tr) 
-        if wash_transaction and wash_transaction != buy_tr: # Filter our the head transaction
+        if wash_transaction and wash_transaction != buy_tr: # Filter out the head transaction
             if sale_item.gain < 0:
                 sale_item.wash = True
                 # If the pre-buy or post-buy is a share amount smaller than the amount of shares in this
@@ -431,6 +420,6 @@ class StockTransactor:
         for tr in self._file_transactions:
             tr_date = date.fromisoformat(tr.date)
             if tr.tr_type == 'buy' and tr_date >= d_minus_30 and tr_date <= d_plus_30 and not tr.is_sold:
-                print(f'WASH SALE found with dates {transaction.date},{tr.date}')
+                #print(f'INFO: Wash Sale detected for {transaction.ticker} with sale date {transaction.date} with wash trigger by on {tr.date}')
                 return tr
         return None
