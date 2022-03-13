@@ -37,14 +37,22 @@ class SaleItem:
     @property
     def gain(self)->float:
         '''
-        Returns the gain (positive) or loss (negative) for this sale. Note that if
-        this sale was a wash sale loss, the disallowed portion of the loss is removed
-        from the loss
+        Returns the gain (positive) or loss (negative) for this sale. Note that this
+        does not take into account any wash sale disallowed loss amounts. Use the
+        allowed_loss property to see the adjusted loss
         '''
-        raw_gain = (self.amount * self.sale_price) - self.cost_basis
-        #if self.wash and raw_gain < 0:
-        #    return raw_gain + self.disallowed_wash_amount
-        return raw_gain
+        return self.__raw_gain()
+
+    @property
+    def allowed_loss(self)->float:
+        '''
+        If this sale constituted a wash sale, this property reflects the allowed
+        loss after adjusting for the disallowed wash loss amount. In all other cases
+        this property will reflect 0
+        '''
+        if self.wash and self.__raw_gain() < 0:
+            return self.__raw_gain() + self.disallowed_wash_amount
+        return 0.0
 
     @property
     def gain_per_share(self)->float:
@@ -76,7 +84,8 @@ class SaleItem:
         for elem in self.__dict__:
             ostr += str(elem) + '=' + str(self.__dict__[elem]) + ','
         ostr += 'proceeds=' + str(self.proceeds) + ','
-        ostr += 'gain=' + str(self.gain)
+        ostr += 'gain=' + str(self.gain) + ','
+        ostr += 'allowed_loss=' + str(self.allowed_loss)
         return ostr
 
     def is_short_term(self,buy_date:str,sell_date:str)->bool:
@@ -89,3 +98,6 @@ class SaleItem:
         d_sell = date.fromisoformat(sell_date)
         d_diff = d_sell - d_buy
         return (d_diff.days < 365)
+
+    def __raw_gain(self):
+        return (self.amount * self.sale_price) - self.cost_basis
