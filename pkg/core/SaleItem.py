@@ -38,12 +38,12 @@ class SaleItem:
     def gain(self)->float:
         '''
         Returns the gain (positive) or loss (negative) for this sale. Note that if
-        this sale was a wash sale loss, the disallowed portion of the lost is removed
+        this sale was a wash sale loss, the disallowed portion of the loss is removed
         from the loss
         '''
         raw_gain = (self.amount * self.sale_price) - self.cost_basis
-        if self.wash and raw_gain < 0:
-            return raw_gain + self.disallowed_wash_amount
+        #if self.wash and raw_gain < 0:
+        #    return raw_gain + self.disallowed_wash_amount
         return raw_gain
 
     @property
