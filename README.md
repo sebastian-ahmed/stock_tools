@@ -7,7 +7,7 @@
     - When a wash-sale-triggering buy is a smaller lot than the wash sale, the disallowed loss amount is only based on the number of stocks of the buy lot
 
 # Usage
-The general usage format involves creating a `StockTransactor` object with a file-name. This initialization step will cause the `StockTransactor` to read the input file, perform the processing and write an output file `sales.txt` (or with an alternatively specified output file name). Currently there ar two input formats supported: *CSV* and *JSON*. Examples of both formats can be found in the [examples directory](./pkg/examples/).
+The general usage format involves creating a `StockTransactor` object with a file-name. This initialization step will cause the `StockTransactor` to read the input file, and perform the processing of transactions. Following this, the user can generate reports to the terminal or to a file. Currently there ar two input formats supported: **CSV** and **JSON**. Examples of both formats can be found in the [examples directory](./pkg/examples/).
 
 Below is a snippet which shows the minial steps:
 ```python
@@ -15,8 +15,10 @@ from pkg.core.StockTransactor import StockTransactor
 
 stock_data = StockTransactor('./pkg/examples/stocks_example.csv')
 
-# Optionally print some information
-stock_data.print_holdings_report()
+# Print the sales report to the terminal as well as to the file
+# with default output file-name
+stock_data.print_sales_report()
+stock_data.write_sales_report()
 ```
 
 ## Running examples
