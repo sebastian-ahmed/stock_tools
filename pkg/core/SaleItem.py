@@ -64,30 +64,44 @@ class SaleItem:
 
     def asdict(self)->dict:
         '''
-        Returns a dict view of this object which is JSON serializable
+        Returns a dict view of this object where all values are strings enabling
+        serialization
         '''
         odict = {}
-        for elem in self.__dict__:
-            odict[elem] = str(self.__dict__[elem])
+        odict['brokerage']              = str(self.brokerage)
+        odict['ticker']                 = str(self.ticker)
+        odict['sale_price']             = str(self.sale_price)
+        odict['amount']                 = str(self.amount)
+        odict['date_acquired']          = str(self.date_acquired)
+        odict['date_sold']              = str(self.date_sold)
+        odict['cost_basis']             = str(self.cost_basis)
+        odict['short_term']             = str(self.short_term)
+        odict['wash']                   = str(self.wash)
+        odict['comm']                   = str(self.comm)
+        odict['disallowed_wash_amount'] = str(self.disallowed_wash_amount)
+        odict['proceeds']               = str(self.proceeds)
+        odict['gain']                   = str(self.gain)
+        odict['gain_per_share']         = str(self.gain_per_share)
+        odict['allowed_loss']           = str(self.allowed_loss)
+
         return odict
 
     def ascsv(self)->str:
         '''
         Returns a CSV string view of this object
         '''
+        asdict = self.asdict()
         ostr = ''
-        for elem in self.__dict__:
-            ostr += str(self.__dict__[elem]) + ","
-        return str[:-1]
+        for elem in asdict:
+            ostr += str(asdict[elem]) + ","
+        return ostr[:-1]
 
     def __str__(self):
+        asdict = self.asdict()
         ostr = 'SaleItem  '
-        for elem in self.__dict__:
-            ostr += str(elem) + '=' + str(self.__dict__[elem]) + ','
-        ostr += 'proceeds=' + str(self.proceeds) + ','
-        ostr += 'gain=' + str(self.gain) + ','
-        ostr += 'allowed_loss=' + str(self.allowed_loss)
-        return ostr
+        for elem in asdict:
+            ostr += str(elem) + '=' + str(asdict[elem]) + ','
+        return ostr[:-1]
 
     def is_short_term(self,buy_date:str,sell_date:str)->bool:
         '''
