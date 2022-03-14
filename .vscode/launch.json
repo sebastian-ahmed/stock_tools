@@ -27,6 +27,14 @@
             "program" :"",
             "args": ["-m", "pkg.examples.json_input"],
             "console": "integratedTerminal"
+        },
+        {
+            "name": "unittest - test_StockTransaction",
+            "type" :"python",
+            "request": "launch",
+            "program" :"",
+            "args": ["-m", "unittest", "pkg.unittest.test_StockTransaction"],
+            "console": "integratedTerminal"
         }
     ]
 }
