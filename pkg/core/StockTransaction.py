@@ -57,8 +57,8 @@ class StockTransaction:
         if isinstance(tr_type,str):
             if tr_type.lower() in ['buy','sell']:
                 self.tr_type = tr_type.lower()
-            return
-        raise ValueError(f"Invalid transcation value={self.tr_type} must be a string 'buy' or 'sell'")
+                return
+        raise ValueError(f"Invalid transcation value={tr_type} must be a string 'buy' or 'sell'")
 
     @property
     def is_sold(self)->bool:
