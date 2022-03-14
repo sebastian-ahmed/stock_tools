@@ -85,15 +85,24 @@ class StockTransaction:
 
     def asdict(self)->dict:
         '''
-        Returns a dict view of this object which is JSON serializable
+        Returns a dict view of this object where all values are strings enabling
+        serialization
         '''
         odict = {}
-        for elem in self.__dict__:
-            odict[elem] = str(self.__dict__[elem])
+        odict['tr_type']   = str(self.tr_type)
+        odict['ticker']    = str(self.ticker)
+        odict['amount']    = str(self.amount)
+        odict['price']     = str(self.price)
+        odict['date']      = str(self.date)
+        odict['comm']      = str(self.comm)
+        odict['brokerage'] = str(self.brokerage)
+        odict['is_sold']   = str(self.is_sold)
+        odict['add_basis'] = str(self.add_basis)
         return odict
 
     def __str__(self):
         ostr = 'StockTransaction  '
-        for elem in self.__dict__:
-            ostr += str(elem) + '=' + str(self.__dict__[elem]) + ','
+        asdict = self.asdict()
+        for elem in asdict:
+            ostr += str(elem) + '=' + str(asdict[elem]) + ','
         return ostr[:-1]
