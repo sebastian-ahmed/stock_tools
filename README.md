@@ -7,7 +7,22 @@
     - When a wash-sale-triggering buy is a smaller lot than the wash sale, the disallowed loss amount is only based on the number of stocks of the buy lot
 
 # Usage
-The general usage format involves creating a `StockTransactor` object with a file-name. This initialization step will cause the `StockTransactor` to read the input file, and perform the processing of transactions. Following this, the user can generate reports to the terminal or to a file. Currently there ar two input formats supported: **CSV** and **JSON**. Examples of both formats can be found in the [examples directory](./pkg/examples/).
+There are two general usage modes. The simplest mode is to to use the included top-level run-script. Otherwise, one may programmatically use the core processing class as part of a custom script.
+
+## Using run-script
+On a command line, assuming an input file stocks.csv, simply run:
+```
+python process.py --infile stocks.csv
+```
+This will generate the default report file `sales.txt`
+
+For usage:
+```
+python process.py --help
+```
+
+## Using StockTransactor Class
+This method involves creating a `StockTransactor` object with an input file argument. This initialization step will cause the `StockTransactor` to read the input file, and perform the processing of transactions. Following this, the user can generate reports to the terminal or to a file. Currently there ar two input formats supported: **CSV** and **JSON**. Examples of both formats can be found in the [examples directory](./pkg/examples/).
 
 Below is a snippet which shows the minial steps:
 ```python
@@ -17,8 +32,8 @@ stock_data = StockTransactor('./pkg/examples/stocks_example.csv')
 
 # Print the sales report to the terminal as well as to the file
 # with default output file-name
-stock_data.print_sales_report()
-stock_data.write_sales_report()
+stock_data.print_report()
+stock_data.write_report()
 ```
 
 ## Running examples
