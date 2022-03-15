@@ -61,9 +61,10 @@ class StockTransactor:
             return 0.0
         return sum([x.amount for x in self._buy_transactions[brokerage][ticker].data])
 
-    def print_sales_report(self,date_range:Tuple[str,str]=None):
+    def print_report(self,date_range:Tuple[str,str]=None):
         '''
-        Prints a report of all sales. When no date_range is specified,
+        Prints a report of sales and resulting holdings.
+        When no date_range is specified,
         writes all sales, otherwise writes sales in the specified range.
         When specifying a date range, a tuple of ISO format string dates must
         be provided in the format:
@@ -75,16 +76,13 @@ class StockTransactor:
         If the date range is negative a RuntimeError will be raised
         '''
         print(self.sales_report_str(date_range))
-
-    def print_holdings_report(self):
-        '''
-        Prints a report of all remaining holdings
-        '''
         print(self.holdings_report_str())
 
-    def write_sales_report(self,date_range:Tuple[str,str]=None):
+
+    def write_report(self,date_range:Tuple[str,str]=None):
         '''
-        Writes report of sales to report file. When no date_range is specified,
+        Writes report of sales and resulting holdings to report file.
+        When no date_range is specified,
         writes all sales, otherwise writes sales in the specified range.
         When specifying a date range, a tuple of ISO format string dates must
         be provided in the format:
@@ -97,6 +95,7 @@ class StockTransactor:
         '''
         with open(self._o_file_name,'w') as f:
             f.write(self.sales_report_str(date_range))
+            f.write(self.holdings_report_str())
 
     ###########################################################################
     # Internal Methods
