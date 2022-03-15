@@ -33,6 +33,8 @@ class StockTransactor:
 
     def __init__(self,input_file_name:str,output_file_name:str='sales.txt'):
         self._i_file_name = input_file_name
+        if output_file_name == None: # Required if name passed through an argparse object
+            output_file_name = 'sales.txt'
         self._o_file_name = output_file_name
         self._buy_transactions = {} # Holds all loaded/entered buy transactions
         self._history = [] # Holds a buffer of this session's transactions (for interactive sessions)
@@ -109,9 +111,15 @@ class StockTransactor:
         ostr += 'SALES REPORT'
 
         if date_range:
-            d1 = date.fromisoformat(date_range[0])
-            d2 = date.fromisoformat(date_range[1])
-            if d2 < d1:
+            if date_range[0]:
+                d1 = date.fromisoformat(date_range[0])
+            else:
+                d1 = None
+            if date_range[1]:
+                d2 = date.fromisoformat(date_range[1])
+            else:
+                d2 = None
+            if d2 and d1 and d2 < d1:
                 raise RuntimeError(f'Specified a negative date range: from {d1} to {d2}')
             ostr += f' for date range {d1} to {d2}'
 
@@ -124,13 +132,32 @@ class StockTransactor:
             ostr += f'Brokerage: {brokerage}\n'
             for ticker in self._sale_items[brokerage].keys():
                 if date_range: # Sales in a date-range
-                    sales_list = [
-                        x for x in self._sale_items[brokerage][ticker] 
-                        if
-                        date.fromisoformat(x.date_sold) >= d1 and 
-                        date.fromisoformat(x.date_sold) <= d2
-                        ]
-                else: # All sales
+                    if d1 and d2:
+                        sales_list = [
+                            x for x in self._sale_items[brokerage][ticker] 
+                            if
+                            date.fromisoformat(x.date_sold) >= d1 and 
+                            date.fromisoformat(x.date_sold) <= d2
+                            ]
+                    elif d1 and not d2:
+                        sales_list = [
+                            x for x in self._sale_items[brokerage][ticker] 
+                            if
+                            date.fromisoformat(x.date_sold) >= d1
+                            ]
+                    elif d2 and not d1:
+                        sales_list = [
+                            x for x in self._sale_items[brokerage][ticker] 
+                            if
+                            date.fromisoformat(x.date_sold) <= d2
+                            ]
+                    else: # All sales
+                        # This case can occur when the date_range tuple is passed
+                        # in with value (None,None)
+                        sales_list = [
+                            x for x in self._sale_items[brokerage][ticker] 
+                            ]
+                else: # All sales (when date_range is None)
                     sales_list = self._sale_items[brokerage][ticker]
                 total_proceeds += sum([x.proceeds for x in sales_list])
                 total_disallowed_wash += sum([x.disallowed_wash_amount for x in sales_list])
