@@ -1,3 +1,4 @@
+import yfinance as yf
 import json
 import csv
 import os.path
@@ -61,7 +62,7 @@ class StockTransactor:
             return 0.0
         return sum([x.amount for x in self._buy_transactions[brokerage][ticker].data])
 
-    def print_report(self,date_range:Tuple[str,str]=None):
+    def print_report(self,date_range:Tuple[str,str]=None,fetch_quotes=False):
         '''
         Prints a report of sales and resulting holdings.
         When no date_range is specified,
@@ -74,12 +75,16 @@ class StockTransactor:
         date_range = ('2022-01-01','2022-12,31')
 
         If the date range is negative a RuntimeError will be raised
+
+        Setting fetch_quotes=True will add current values for
+        the holdings section of the report. This requires an internet
+        connection and can cause delays in report generation
         '''
         print(self.sales_report_str(date_range))
-        print(self.holdings_report_str())
+        print(self.holdings_report_str(fetch_quotes))
 
 
-    def write_report(self,date_range:Tuple[str,str]=None):
+    def write_report(self,date_range:Tuple[str,str]=None,fetch_quotes=False):
         '''
         Writes report of sales and resulting holdings to report file.
         When no date_range is specified,
@@ -92,10 +97,14 @@ class StockTransactor:
         date_range = ('2022-01-01','2022-12,31')
 
         If the date range is negative a RuntimeError will be raised
+
+        Setting fetch_quotes=True will add current values for
+        the holdings section of the report. This requires an internet
+        connection and can cause delays in report generation
         '''
         with open(self._o_file_name,'w') as f:
             f.write(self.sales_report_str(date_range))
-            f.write(self.holdings_report_str())
+            f.write(self.holdings_report_str(fetch_quotes))
 
     ###########################################################################
     # Internal Methods
@@ -173,7 +182,7 @@ class StockTransactor:
 
         return ostr
 
-    def holdings_report_str(self):
+    def holdings_report_str(self,fetch_quotes=False):
         '''
         Returns the current holdings report string
         '''
@@ -183,11 +192,20 @@ class StockTransactor:
         for brokerage in self._buy_transactions.keys():
             ostr += f'Brokerage: {brokerage}\n'
             for ticker in self._buy_transactions[brokerage].keys():
+                if fetch_quotes:
+                    yticker = yf.Ticker(ticker.upper())
+                    current_price = yticker.info["regularMarketPrice"]
                 for tr in self._buy_transactions[brokerage][ticker].data:
                     add_basis = ''
                     if tr.add_basis > 0:
                         add_basis = f' (Contains additional basis of {tr.add_basis} from previous wash sale)'
-                    ostr += f'{ticker}: {tr.amount} shares, cost-basis={tr.price * tr.amount + tr.add_basis}'+add_basis + '\n'
+                    cost_basis = tr.price * tr.amount + tr.add_basis
+                    ostr += f'{ticker}: {tr.amount} shares, cost-basis={round(cost_basis,2)}'+add_basis
+                    if fetch_quotes:
+                        ostr += ' current_price=' + str(current_price)
+                        ostr += ' current_value=' + str(round(current_price * tr.amount,2))
+                        ostr += ' current_gain =' + str(round(tr.amount*(current_price-tr.price),2))
+                    ostr += '\n'
         return ostr
 
     def buy(self,ticker:str,amount:int,price:float,date:Any=None,comm=0.0,brokerage=None):
