@@ -21,61 +21,60 @@ class test_StockTransaction(unittest.TestCase):
         import string
         letters = string.ascii_letters
 
-        for _ in range(10):
-            for _ in range(100):
-                tr_type   = random.choice(['sell','buy'])
-                ticker    = ''.join(random.choice(letters) for i in range(random.randint(3,5)))
-                amount    = random.randint(1,100000000)
-                price     = random.random()
-                comm      = random.random()
-                brokerage = ''.join(random.choice(letters) for i in range(random.randint(1,30)))
-                is_sold   = bool(random.randint(0,1))
-                add_basis = random.random()
+        for _ in range(100):
+            tr_type   = random.choice(['sell','buy'])
+            ticker    = ''.join(random.choice(letters) for i in range(random.randint(3,5)))
+            amount    = random.randint(1,100000000)
+            price     = random.random()
+            comm      = random.random()
+            brokerage = ''.join(random.choice(letters) for i in range(random.randint(1,30)))
+            is_sold   = bool(random.randint(0,1))
+            add_basis = random.random()
 
-                days_offset = random.randint(-500,500)
-                dd = timedelta(days=days_offset)
+            days_offset = random.randint(-500,500)
+            dd = timedelta(days=days_offset)
 
-                rand_date = str(date.today()+dd)
+            rand_date = str(date.today()+dd)
 
-                st = StockTransaction(
-                    tr_type=tr_type,
-                    ticker=ticker,
-                    amount=amount,
-                    price=price,
-                    comm=comm,
-                    brokerage=brokerage,
-                    date=rand_date
-                )
+            st = StockTransaction(
+                tr_type=tr_type,
+                ticker=ticker,
+                amount=amount,
+                price=price,
+                comm=comm,
+                brokerage=brokerage,
+                date=rand_date
+            )
 
-                # update post-init properties
-                st.is_sold = is_sold
-                st.add_basis = add_basis
+            # update post-init properties
+            st.is_sold = is_sold
+            st.add_basis = add_basis
 
-                self.assertEqual(st.tr_type,tr_type)
-                self.assertEqual(st.ticker,ticker)
-                self.assertEqual(st.amount,amount)
-                self.assertEqual(st.price,price)
-                self.assertEqual(st.comm,comm)
-                self.assertEqual(st.brokerage,brokerage)
-                self.assertEqual(st.is_sold,is_sold)
-                self.assertEqual(st.add_basis,add_basis)
-                self.assertEqual(st.date,rand_date)
+            self.assertEqual(st.tr_type,tr_type)
+            self.assertEqual(st.ticker,ticker)
+            self.assertEqual(st.amount,amount)
+            self.assertEqual(st.price,price)
+            self.assertEqual(st.comm,comm)
+            self.assertEqual(st.brokerage,brokerage)
+            self.assertEqual(st.is_sold,is_sold)
+            self.assertEqual(st.add_basis,add_basis)
+            self.assertEqual(st.date,rand_date)
 
-                # Check asdict()
-                asdict = st.asdict()
-                ref_dict = {
-                    'tr_type':str(tr_type),
-                    'ticker':str(ticker),
-                    'amount':str(amount),
-                    'price':str(price),
-                    'comm':str(comm),
-                    'brokerage':str(brokerage),
-                    'is_sold':str(is_sold),
-                    'add_basis':str(add_basis),
-                    'date':str(rand_date)
-                }
-                self.assertEqual(sorted(list(asdict.keys())),sorted(list(ref_dict.keys())))
-                self.assertEqual(asdict,ref_dict)
+            # Check asdict()
+            asdict = st.asdict()
+            ref_dict = {
+                'tr_type':str(tr_type),
+                'ticker':str(ticker),
+                'amount':str(amount),
+                'price':str(price),
+                'comm':str(comm),
+                'brokerage':str(brokerage),
+                'is_sold':str(is_sold),
+                'add_basis':str(add_basis),
+                'date':str(rand_date)
+            }
+            self.assertEqual(sorted(list(asdict.keys())),sorted(list(ref_dict.keys())))
+            self.assertEqual(asdict,ref_dict)
 
     def test_errors_invalid_date(self):
         '''
