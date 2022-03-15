@@ -13,7 +13,23 @@
             "console": "integratedTerminal"
         },
         {
-            "name": "csv_input",
+            "name": "process - json",
+            "type" :"python",
+            "request": "launch",
+            "program" :"process.py",
+            "args": ["--infile", "pkg/examples/stocks_example.json"],
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "process - csv",
+            "type" :"python",
+            "request": "launch",
+            "program" :"process.py",
+            "args": ["--infile", "pkg/examples/stocks_example.csv"],
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "examples - csv_input",
             "type" :"python",
             "request": "launch",
             "program" :"",
@@ -21,7 +37,7 @@
             "console": "integratedTerminal"
         },
         {
-            "name": "json_input",
+            "name": "examples - json_input",
             "type" :"python",
             "request": "launch",
             "program" :"",
