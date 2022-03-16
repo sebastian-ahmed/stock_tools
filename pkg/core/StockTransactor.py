@@ -1,4 +1,6 @@
 import yfinance as yf
+from prettytable import PrettyTable
+
 import json
 import csv
 import os.path
@@ -110,13 +112,11 @@ class StockTransactor:
     # Internal Methods
     ###########################################################################
 
-
     def sales_report_str(self,date_range:Tuple[str,str]=None)->str:
         '''
         Returns the sales report string for printing to screen or file
         '''
-        ostr = '='*80+'\n'
-        ostr += 'SALES REPORT'
+        ostr = self.banner_wrap_str('SALES REPORT',level=0)
 
         if date_range:
             if date_range[0]:
@@ -129,15 +129,17 @@ class StockTransactor:
                 d2 = None
             if d2 and d1 and d2 < d1:
                 raise RuntimeError(f'Specified a negative date range: from {d1} to {d2}')
-            ostr += f' for date range {d1} to {d2}'
-
-        ostr += '\n' + '='*80+'\n'
+            ostr += f'Date range: {d1} to {d2}\n'
 
         total_proceeds = 0.0
         net_gain = 0.0
         total_disallowed_wash = 0.0
+        sales_list = []
+        table = PrettyTable()
+        table.field_names = SaleItem.fields_list()
+
         for brokerage in self._sale_items.keys():
-            ostr += f'Brokerage: {brokerage}\n'
+            #ostr += f'\nBrokerage: {brokerage}'
             for ticker in self._sale_items[brokerage].keys():
                 if date_range: # Sales in a date-range
                     if d1 and d2:
@@ -168,17 +170,28 @@ class StockTransactor:
                 else: # All sales (when date_range is None)
                     sales_list = self._sale_items[brokerage][ticker]
                 total_proceeds += sum([x.proceeds for x in sales_list])
-                total_disallowed_wash += sum([x.disallowed_wash_amount for x in sales_list])
+                total_disallowed_wash += sum([x.dis_wash_loss for x in sales_list])
                 net_gain += sum([x.gain for x in sales_list])
                 if len(sales_list) == 0:
                     ostr += 'No sales were found given the criteria\n'
                     continue
                 for sale in sales_list:
-                    ostr += f'{ticker}: {sale}\n'
-        ostr += f'Total proceeds       = ${total_proceeds}\n'
-        ostr += f'Net gain (raw)       = ${net_gain}\n'
-        ostr += f'Net gain (effective) = ${round(net_gain+total_disallowed_wash,2)}\n'
-        ostr += f'Total of disallowed wash amounts = ${total_disallowed_wash}\n'
+                    values_list = []
+                    for x in SaleItem.fields_list():
+                        attr_val = getattr(sale,x)
+                        if isinstance(attr_val,float):
+                            values_list.append(round(attr_val,2))
+                        else:
+                            values_list.append(attr_val)
+                    table.add_row(values_list)
+        if len(sales_list)>0:
+            ostr += '\n' + str(table) + '\n'
+            ostr += f'\nTotal proceeds                = ${total_proceeds}\n'
+            ostr += f'Net gain (raw)                = ${net_gain}\n'
+            ostr += f'Net gain (adjusted)           = ${round(net_gain+total_disallowed_wash,2)}\n'
+            ostr += f'Total disallowed wash amounts = ${total_disallowed_wash}\n'
+        else:
+            ostr += '*** There were no sales in the specified date range ***\n'
 
         return ostr
 
@@ -186,26 +199,61 @@ class StockTransactor:
         '''
         Returns the current holdings report string
         '''
-        ostr = '='*80 +'\n'
-        ostr += 'HOLDINGS REPORT\n'
-        ostr += '='*80 + '\n'
+        ostr = self.banner_wrap_str('HOLDINGS REPORT',level=0)
         for brokerage in self._buy_transactions.keys():
-            ostr += f'Brokerage: {brokerage}\n'
+            total_value = 0.
+            total_cost_basis = 0.0
+            net_gain = 0.
+            ostr += f'\nBrokerage: {brokerage}'
+            table = PrettyTable()
+            if fetch_quotes:
+                table.field_names = [
+                    'ticker',
+                    'amount',
+                    'cost-basis',
+                    'added-basis',
+                    'cur-price',
+                    'cur-value',
+                    'cur-gain',
+                    'cur-adjusted-gain']
+            else:
+                table.field_names = [
+                    'ticker',
+                    'amount',
+                    'cost-basis',
+                    'added-basis']
             for ticker in self._buy_transactions[brokerage].keys():
-                if fetch_quotes:
+                if fetch_quotes: # Grab current stock price data from web
                     yticker = yf.Ticker(ticker.upper())
                     current_price = yticker.info["regularMarketPrice"]
                 for tr in self._buy_transactions[brokerage][ticker].data:
-                    add_basis = ''
-                    if tr.add_basis > 0:
-                        add_basis = f' (Contains additional basis of {tr.add_basis} from previous wash sale)'
                     cost_basis = tr.price * tr.amount + tr.add_basis
-                    ostr += f'{ticker}: {tr.amount} shares, cost-basis={round(cost_basis,2)}'+add_basis
                     if fetch_quotes:
-                        ostr += ' current_price=' + str(current_price)
-                        ostr += ' current_value=' + str(round(current_price * tr.amount,2))
-                        ostr += ' current_gain =' + str(round(tr.amount*(current_price-tr.price),2))
+                        current_value = current_price * tr.amount
+                        current_gain  = tr.amount*(current_price-tr.price)
+                        current_gain_pct = round(100* current_gain/cost_basis,2)
+                        current_adjusted_gain = current_gain - tr.add_basis
+                        current_adjusted_gain_pct = round(100*current_adjusted_gain/cost_basis,2)
+                        table.add_row([
+                            ticker,
+                            tr.amount,
+                            round(cost_basis,2),
+                            tr.add_basis,
+                            current_price,
+                            round(current_value,2),
+                            f'{round(current_gain,2)} ({current_gain_pct}%)',
+                            f'{round(current_adjusted_gain,2)} ({current_adjusted_gain_pct}%)'])
+                        total_cost_basis += cost_basis
+                        total_value += current_value
+                    else:
+                        table.add_row([ticker,tr.amount,round(cost_basis,2),tr.add_basis])
                     ostr += '\n'
+            ostr += table.get_string() + '\n'
+            if fetch_quotes:
+                net_gain = total_value - total_cost_basis
+                net_gain_percent = 100*net_gain/(total_cost_basis)
+                ostr += f'Total Value         = ${round(total_value,2)}\n'
+                ostr += f'Total Adjusted Gain = ${round(net_gain,2)} ({round(net_gain_percent,2)}%)\n'
         return ostr
 
     def buy(self,ticker:str,amount:int,price:float,date:Any=None,comm=0.0,brokerage=None):
@@ -444,8 +492,8 @@ class StockTransactor:
                 # If the pre-buy or post-buy is a share amount smaller than the amount of shares in this
                 # sale, we only "wash" the amount of shares bought, not the complete sale. This is why
                 # we have the "min" term.
-                sale_item.disallowed_wash_amount = round(abs(sale_item.gain_per_share * (min(amount,wash_transaction.amount))),2)
-                self._wash_sales[sell_tr.ticker] = sale_item.disallowed_wash_amount
+                sale_item.dis_wash_loss = round(abs(sale_item.gain_per_share * (min(amount,wash_transaction.amount))),2)
+                self._wash_sales[sell_tr.ticker] = sale_item.dis_wash_loss
         
         return sale_item
 
@@ -561,3 +609,34 @@ class StockTransactor:
             if tr.tr_type == 'buy' and tr_date >= d_minus_30 and tr_date <= d_plus_30 and not tr.is_sold:
                 return tr
         return None
+
+    def banner_wrap_str(self,heading:str,level:int=0)->str:
+        '''
+        Returns the input string wrapped with a banner with level-0 or level-1
+        with level-0 being the biggest banner 
+        '''
+        ostr = ''
+        if level < 1:
+            ostr += '='*80 + '\n'
+            ostr += '=' + ' '*self.get_banner_margins(80,len(heading))[0]
+            ostr += heading + ' '*self.get_banner_margins(80,len(heading))[1] + '=\n'
+            ostr += '='*80 + '\n'
+        else:
+            ostr += ' '*20 + '='*40 + '\n'
+            ostr += ' '*20 + '=' + ' '*self.get_banner_margins(40,len(heading))[0]
+            ostr += heading + ' '*self.get_banner_margins(40,len(heading))[1] + '=\n'
+            ostr += ' '*20 + '='*40 + '\n'
+        return ostr
+
+    def get_banner_margins(self,banner_len:int,heading_len:int)->Tuple[int,int]:
+        '''
+        Given a heading, returns the left and right margin white-space amounts for
+        a banner of length banner_len. Returns a tuple of ints (left-gap,right-gap)
+        Assumes that the left and right extremes of the heading part of the banner
+        consume one character each. If the heading_len cannot fit into the banner_len
+        (0,0) is returned
+        '''
+        total_ws = banner_len - heading_len - 2
+        right_ws = max(0,int(total_ws/2))
+        left_ws  = max(0,total_ws - right_ws)
+        return left_ws,right_ws

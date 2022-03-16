@@ -26,7 +26,7 @@ class SaleItem:
         self.wash          = wash
 
         self.comm  = 0.0 # Must be set after sale processing
-        self.disallowed_wash_amount = 0.0 # Must be set during sale processing
+        self.dis_wash_loss = 0.0 # Must be set during sale processing
 
     @property
     def proceeds(self)->float:
@@ -52,7 +52,7 @@ class SaleItem:
         this property will reflect 0
         '''
         if self.wash and self.__raw_gain() < 0:
-            return self.__raw_gain() + self.disallowed_wash_amount
+            return self.__raw_gain() + self.dis_wash_loss
         return 0.0
 
     @property
@@ -62,27 +62,53 @@ class SaleItem:
         '''
         return self.sale_price - (self.cost_basis/self.amount)
 
+    @staticmethod
+    def fields_list()->list:
+        '''
+        Unbound method which returns a list of strings matching the keys of the
+        dict which would normally be available from the asdict() bound method call.
+        Because this is a static method, it can be called un-bound for purposes
+        such as generating report table headers
+        '''
+        return[
+                'brokerage'     ,
+                'ticker'        ,
+                'sale_price'    ,
+                'amount'        ,
+                'date_acquired' ,
+                'date_sold'     ,
+                'cost_basis'    ,
+                'short_term'    ,
+                'wash'          , 
+                'comm'          , 
+                'dis_wash_loss' ,
+                'proceeds'      ,
+                'gain'          , 
+                'gain_per_share',
+                'allowed_loss'
+        ]
+
     def asdict(self)->dict:
         '''
         Returns a dict view of this object where all values are strings enabling
         serialization
         '''
         odict = {}
-        odict['brokerage']              = str(self.brokerage)
-        odict['ticker']                 = str(self.ticker)
-        odict['sale_price']             = str(self.sale_price)
-        odict['amount']                 = str(self.amount)
-        odict['date_acquired']          = str(self.date_acquired)
-        odict['date_sold']              = str(self.date_sold)
-        odict['cost_basis']             = str(self.cost_basis)
-        odict['short_term']             = str(self.short_term)
-        odict['wash']                   = str(self.wash)
-        odict['comm']                   = str(self.comm)
-        odict['disallowed_wash_amount'] = str(self.disallowed_wash_amount)
-        odict['proceeds']               = str(self.proceeds)
-        odict['gain']                   = str(self.gain)
-        odict['gain_per_share']         = str(self.gain_per_share)
-        odict['allowed_loss']           = str(self.allowed_loss)
+        odict['brokerage']      = str(self.brokerage)
+        odict['ticker']         = str(self.ticker)
+        odict['sale_price']     = str(self.sale_price)
+        odict['amount']         = str(self.amount)
+        odict['date_acquired']  = str(self.date_acquired)
+        odict['date_sold']      = str(self.date_sold)
+        odict['cost_basis']     = str(self.cost_basis)
+        odict['short_term']     = str(self.short_term)
+        odict['wash']           = str(self.wash)
+        odict['comm']           = str(self.comm)
+        odict['dis_wash_loss']  = str(self.dis_wash_loss)
+        odict['proceeds']       = str(self.proceeds)
+        odict['gain']           = str(self.gain)
+        odict['gain_per_share'] = str(self.gain_per_share)
+        odict['allowed_loss']   = str(self.allowed_loss)
 
         return odict
 
