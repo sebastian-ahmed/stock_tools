@@ -27,4 +27,5 @@ class WinWrap(object):
 
     def __exit__(self,*args):
         if os.name == 'nt':
-            input("\nPress ENTER to exit")
+            #input("\nPress ENTER to exit")
+            pass
