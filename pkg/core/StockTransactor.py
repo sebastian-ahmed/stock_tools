@@ -10,6 +10,7 @@ from typing import Any, Tuple
 from collections import defaultdict
 
 from pkg.core.StockTransaction import StockTransaction
+from pkg.core.TransactionCommands import Command_SPLIT
 from pkg.core.SaleItem import SaleItem
 from pkg.core.Fifo import Fifo
 
@@ -43,6 +44,7 @@ class StockTransactor:
         self._history = [] # Holds a buffer of this session's transactions (for interactive sessions)
         self._sale_items = {} # Dict of dict of list of sales keyed by [brokerage][ticker]
         self._file_transactions = [] # Stores all transactions read from input file
+        self._splits = {} # Sequential list of SPLIT commands
 
         # We track wash sales as we process transactions because we need to adjust the
         # costs basis of future purchases. Because wash sales cross brokerage boundaries,
@@ -428,7 +430,7 @@ class StockTransactor:
 
             else: 
                 # In this case the FIFO head does not have sufficient funds,
-                # so we consume it and pop the FIFO and look for a previous buy to sell against
+                # so we consume it and pop the FIFO and look for a subsequent buy to sell against
                 # in the next iteration
                 # We also create a SaleItem for this chunk of the sale because the buy profile
                 # comprising of the cost-basis and acquisition date may be different than the
@@ -462,7 +464,7 @@ class StockTransactor:
         wash-sale fields
         The last field indicates that this sale constitutes the remainder or entirety of 
         the buy transaction. When this is True, we also apply the buy transaction commission
-        to the cost-bases
+        to the cost-basis
         '''
         # The cost-basis must take into account any previous wash sale disallowed amounts
         # that have not been cleared out.
@@ -553,16 +555,27 @@ class StockTransactor:
             if fformat == 'json':
                 for line in f:
                     if line.startswith('{'):
-                        tr = StockTransaction.from_dict(json.loads(line))
-                        self._file_transactions.append(tr)
+                        dict_line = json.loads(line)
+                        if list(dict_line.keys())[0] == 'cmd': # special command
+                            self.process_command(dict_line['cmd'])
+                        else:
+                            tr = StockTransaction.from_dict(dict_line)
+                            self._file_transactions.append(tr)
             elif fformat == 'csv':
                 csv.register_dialect('stocks', delimiter=',', skipinitialspace=True)
                 reader = csv.DictReader(f,dialect='stocks')
                 for line in reader:
-                        tr = StockTransaction.from_dict(line)
-                        self._file_transactions.append(tr)
+                        if line['ticker'].startswith('!'): # Special instruction:
+                            self.process_command(line['ticker'])
+                        else:
+                            tr = StockTransaction.from_dict(line)
+                            self._file_transactions.append(tr)
             else:
                 raise RuntimeError(f'File {fname} is not a supported input format')
+
+        # Apply amount and price adjustments for any stock splits defined in
+        # the input file
+        self.split_stocks()
 
         for tr in self._file_transactions:
             # When we perform the re-build, we do not add these transactions to the current
@@ -572,6 +585,55 @@ class StockTransactor:
             else:
                 self.sell_transaction(tr,skip_history=True)
 
+    def process_command(self,cmd_str:str):
+        '''
+        Processes command entries in stock transaction input file. Expected formats
+        of commands are '#<COMMAND>#Argument1#Argument2#Argument3...'
+        '''
+        cmd_full = cmd_str[1:].split('#') # Remove the '!' char at start of string
+        cmd_word = cmd_full[0]
+        cmd_args = cmd_full[1:]
+
+        print(f'INFO: Encountered command: {cmd_word} with arguments {cmd_args}')
+
+        if cmd_word == 'SPLIT':
+            # arg format: ticker,split_amount,date
+            if len(cmd_args) != 3:
+                raise RuntimeError(f'Invalid number of arguments specified for SPLIT command. Expected 3, but got {len(cmd_args)}')
+            ticker = cmd_args[0]
+            if ticker not in self._splits:
+                self._splits[ticker] = []
+            self._splits[cmd_args[0]].append(Command_SPLIT(ticker=ticker,amount=float(cmd_args[1]),date=cmd_args[2]))
+        else:
+            raise RuntimeError(f'Unsupported special command: {cmd_word}')
+
+    def split_stocks(self):
+        '''
+        Iterates through stock buy lots and performs split operations as defined in 
+        the self._splits dict. This involves changing the amount field and price per
+        share while maintaining a constant cost basis.
+        '''
+        # Order stock split information by date field
+        for ticker in self._splits:
+            self._splits[ticker] = sorted(self._splits[ticker],key=lambda x:date.fromisoformat(x.date))
+
+        # Because there can be multiple stock splits and un-splits over time
+        # our outer iteration is the stock splits ordered by date. This means we
+        # must perform multiple passes through the _file_transactions list to 
+        # update on a split by split basis. For example, if there are two splits, one on
+        # date-A and one on date-B (where date-B > date-A), is there is a buy lot of
+        # that stock occuring before date-A, then it will be split twice over two passes
+        for ticker in self._splits:
+            for split in self._splits[ticker]:
+                for tr in [
+                    x for x in self._file_transactions 
+                    if x.tr_type=='buy' and 
+                    x.ticker==ticker and
+                    date.fromisoformat(x.date) <= date.fromisoformat(split.date)
+                    ]:
+                    tr.amount = tr.amount * split.amount  # scale the amount by split amount
+                    tr.price  = tr.price / split.amount   # scale the per-share price by split amount
+                    
     def flush_to_file(self,file_name=None):
         '''
         Writes the current session trade history to the associated file name. Optionally

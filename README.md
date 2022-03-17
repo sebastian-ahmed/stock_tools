@@ -3,9 +3,10 @@
 `stock_tools` is a set of utilities for helping to manage multi-brokerage stock trading portfolios with the main functionality generating stock sale reporting for tax purposes. Specifically, by simply providing an input file of all stock trades of interest, `stock_tools` will generate a report of sale items with the following characteristics:
 - Uses the "first-in-first-out' (FIFO) ordering of stock buys. This means that when a sale is processed, the corresponding buy lots are processed from oldest to newest
 - When a sale covers multiple prior buy lots, a discrete sale item is created for each input buy lot. This allows for breaking out parts of the sale which may be long-term vs short-term, have different cost-basis amounts, and different commissions
-- Correctly determines wash sales including the amounts of loss disallowed by the wash-sale. Further, any disallowed wash sale amounts are then added as additional cost-basis amounts for any downstream buys of that stock
+- Correctly determines **wash sales** including the amounts of loss disallowed by the wash-sale. Further, any disallowed wash sale amounts are then added as additional cost-basis amounts for any downstream buys of that stock
     - When a wash-sale-triggering buy is a smaller lot than the wash sale, the disallowed loss amount is only based on the number of stocks of the buy lot
     - Wash sales are analyzed across different brokerage entries as required by the tax code
+- Provision for entering custom commands to describe events such as **stock splits**. Stock splits are retroactively applied to relevant buy lots in the input stock transaction history.
 - Includes a report of holdings optionally with current stock prices and resulting valuation and gain per holding (by connecting directly to the Yahoo Finance web API)
 
 # Usage
@@ -68,7 +69,7 @@ python -m pkg.examples.json_input
 ```
 
 # Example Output
-Below is the report output from running either of the above examples with the `--fetch_quotes` option enabled:
+Below is the report output from running either of the above examples with the `--fetch_quotes` option enabled. Note that the table in the "SALES REPORT" section lists sales which can be reported for tax purposes. The "HOLDINGS REPORT" section is informational and useful in the sense that you can see the holdings with gains and losses across all your brokerage accounts.
 
 ```
 Running with arguments: Namespace(infile='pkg/examples/stocks_example.json', outfile=None, date_start=None, date_end=None, fetch_quotes=True)
@@ -116,4 +117,41 @@ Brokerage: MyBroker_B
 +--------+--------+------------+-------------+-----------+-----------+------------------+-------------------+
 Total Value         = $10654.25
 Total Adjusted Gain = $652.58 (6.52%)
+```
+# Special commands
+Both examples show example usage of the stock split special command. The general format of special commands is a single field of the format
+
+```
+!<COMMAND>#arg0#arg1#arg2#...
+```
+
+Each command has a unique number of arguments depending on the required semantics. The command lines may be placed anywhere in the input stock transaction file and in any order although it is recommended for documentation purposes that such commands are placed in chronological order along with stock transactions.
+
+## SPLIT
+The `SPLIT` command indicated a stock split event. The format of this command is as follows:
+
+```
+!SPLIT#<ticker>#<amount>#<date>
+```
+
+Consider a stock split for ticker IBM which is a 2:1 split (2 stocks created for every 1 stock) on July 10th 2022. The `JSON` and `CSV` version of the command line are shown below:
+
+- CSV:
+```
+!SPLIT#IBM#2#2022-07-10
+```
+- JSON
+```json
+{cmd:"!SPLIT#IBM#2#2022-07-10"}
+```
+
+A reverse split (where the number of resulting shares is lower) must be expressed as a decimal, e.g., a 1-for-2 split would be denoted by an amount of 0.5 
+
+## Programmatical commands
+When using `stock_tools` in a programmatical way, commands may be called directly via the `StockTransactor` object as follows, where `<COMMAND>` is the full command string as described above
+
+```python
+st = StockTransactor(infile='my_stocks.json')
+st.process_command(<COMMAND>)
+st.rebuild() # Will force a re-processing of the input file
 ```
