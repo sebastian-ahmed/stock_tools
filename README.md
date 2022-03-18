@@ -1,7 +1,7 @@
 # Overview
 
 `stock_tools` is a set of utilities for helping to manage multi-brokerage stock trading portfolios with the main functionality generating stock sale reporting for tax purposes. Specifically, by simply providing an input file of all stock trades of interest, `stock_tools` will generate a report of sale items with the following characteristics:
-- Uses the "first-in-first-out' (FIFO) ordering of stock buys. This means that when a sale is processed, the corresponding buy lots are processed from oldest to newest
+- Supports a default sale ordering of "first-in-first-out' (FIFO) stock buys as well as support for sales which target ordering of specified buy lots
 - When a sale covers multiple prior buy lots, a discrete sale item is created for each input buy lot. This allows for breaking out parts of the sale which may be long-term vs short-term, have different cost-basis amounts, and different commissions
 - Correctly determines **wash sales** including the amounts of loss disallowed by the wash-sale. Further, any disallowed wash sale amounts are then added as additional cost-basis amounts for any downstream buys of that stock
     - When a wash-sale-triggering buy is a smaller lot than the wash sale, the disallowed loss amount is only based on the number of stocks of the buy lot
@@ -15,7 +15,7 @@ There are two general usage modes. The simplest and recommended mode is to to us
 ## Required Python packages
 In order to use `stock_tools` you must have the following Python environment installed on your system:
 - Python version 3.6 or newer
-- The following additional pacakges which can be installed using `pip install <package>`
+- The following additional packages which can be installed using `pip install <package>`
     - `yfinance`
     - `prettytable`
 
@@ -72,8 +72,11 @@ python -m pkg.examples.json_input
 Below is the report output from running either of the above examples with the `--fetch_quotes` option enabled. Note that the table in the "SALES REPORT" section lists sales which can be reported for tax purposes. The "HOLDINGS REPORT" section is informational and useful in the sense that you can see the holdings with gains and losses across all your brokerage accounts.
 
 ```
-Running with arguments: Namespace(infile='pkg/examples/stocks_example.json', outfile=None, date_start=None, date_end=None, fetch_quotes=True)
+Running with arguments: Namespace(date_end=None, date_start=None, fetch_quotes=True, infile='pkg/examples/stocks_example.json', outfile=None)
 Reading file pkg/examples/stocks_example.json as JSON
+INFO: Encountered command: SPLIT with arguments ['QCOM', '2', '2025-04-15']
+INFO: Encountered command: SPLIT with arguments ['QCOM', '10', '2023-04-15']
+INFO: Encountered command: SPLIT with arguments ['QCOM', '5', '2024-04-15']
 INFO: Wash Sale detected for SPY with sale date 2022-06-25 with wash trigger buy on 2022-07-15
 INFO: Wash Sale detected for SPY with sale date 2022-07-16 with wash trigger buy on 2022-07-15
 INFO: Wash Sale detected for SPY with sale date 2022-07-16 with wash trigger buy on 2022-08-15
@@ -82,18 +85,20 @@ INFO: Wash Sale detected for SPY with sale date 2022-07-16 with wash trigger buy
 ================================================================================
 Date range: None to None
 
-+------------+--------+------------+--------+---------------+------------+------------+------------+-------+------+---------------+----------+----------+----------------+--------------+
-| brokerage  | ticker | sale_price | amount | date_acquired | date_sold  | cost_basis | short_term |  wash | comm | dis_wash_loss | proceeds |   gain   | gain_per_share | allowed_loss |
-+------------+--------+------------+--------+---------------+------------+------------+------------+-------+------+---------------+----------+----------+----------------+--------------+
-| MyBroker_B |  SPY   |   500.0    |  75.0  |   2022-03-12  | 2022-06-25 |  75000.0   |    True    |  True | 5.0  |    37500.0    | 37495.0  | -37500.0 |     -500.0     |     0.0      |
-| MyBroker_B |  SPY   |   500.0    |  25.0  |   2022-03-12  | 2022-07-16 |  25005.0   |    True    |  True | 0.0  |    12505.0    | 12500.0  | -12505.0 |     -500.2     |     0.0      |
-| MyBroker_B |  SPY   |   500.0    |  75.0  |   2022-07-15  | 2022-07-16 |  60005.0   |    True    |  True | 5.0  |    7501.67    | 37495.0  | -22505.0 |    -300.07     |  -15003.33   |
-| MyBroker_A |  TQQQ  |   200.0    |  50.0  |   2022-03-12  | 2023-03-12 |   5000.0   |   False    | False | 5.0  |      0.0      |  9995.0  |  5000.0  |     100.0      |     0.0      |
-+------------+--------+------------+--------+---------------+------------+------------+------------+-------+------+---------------+----------+----------+----------------+--------------+
++------------+--------+------------+--------+---------------+------------+------------+------------+-------+------+---------------+----------+----------+----------------+--------------+--------+
+| brokerage  | ticker | sale_price | amount | date_acquired | date_sold  | cost_basis | short_term |  wash | comm | dis_wash_loss | proceeds |   gain   | gain_per_share | allowed_loss | lot_id |
++------------+--------+------------+--------+---------------+------------+------------+------------+-------+------+---------------+----------+----------+----------------+--------------+--------+
+| MyBroker_B |  SPY   |   500.0    |  75.0  |   2022-03-12  | 2022-06-25 |  75000.0   |    True    |  True | 5.0  |    37500.0    | 37495.0  | -37500.0 |     -500.0     |     0.0      |  None  |
+| MyBroker_B |  SPY   |   500.0    |  25.0  |   2022-03-12  | 2022-07-16 |  25005.0   |    True    |  True | 0.0  |    12505.0    | 12500.0  | -12505.0 |     -500.2     |     0.0      |  None  |
+| MyBroker_B |  SPY   |   500.0    |  75.0  |   2022-07-15  | 2022-07-16 |  60005.0   |    True    |  True | 5.0  |    7501.67    | 37495.0  | -22505.0 |    -300.07     |  -15003.33   |  None  |
+| MyBroker_A |  TQQQ  |   200.0    |  25.0  |   2022-04-05  | 2023-03-12 |   3005.0   |    True    | False | 0.0  |      0.0      |  5000.0  |  1995.0  |      79.8      |     0.0      |   2    |
+| MyBroker_A |  TQQQ  |   200.0    |  25.0  |   2022-04-01  | 2023-03-12 |   2755.0   |    True    | False | 5.0  |      0.0      |  4995.0  |  2245.0  |      89.8      |     0.0      |   1    |
+| MyBroker_A |  TQQQ  |   200.0    |  50.0  |   2022-03-12  | 2023-03-12 |   5000.0   |   False    | False | 5.0  |      0.0      |  9995.0  |  5000.0  |     100.0      |     0.0      |   0    |
++------------+--------+------------+--------+---------------+------------+------------+------------+-------+------+---------------+----------+----------+----------------+--------------+--------+
 
-Total proceeds                = $97485.0
-Net gain (raw)                = $-67510.0
-Net gain (adjusted)           = $-10003.33
+Total proceeds                = $107480.0
+Net gain (raw)                = $-63270.0
+Net gain (adjusted)           = $-5763.33
 Total disallowed wash amounts = $57506.67
 
 ================================================================================
@@ -101,22 +106,24 @@ Total disallowed wash amounts = $57506.67
 ================================================================================
 
 Brokerage: MyBroker_A
-+--------+--------+------------+-------------+-----------+-----------+-------------------+-------------------+
-| ticker | amount | cost-basis | added-basis | cur-price | cur-value |      cur-gain     | cur-adjusted-gain |
-+--------+--------+------------+-------------+-----------+-----------+-------------------+-------------------+
-|  TQQQ  |  50.0  |   5000.0   |     0.0     |   43.55   |   2177.5  | -2822.5 (-56.45%) | -2822.5 (-56.45%) |
-+--------+--------+------------+-------------+-----------+-----------+-------------------+-------------------+
-Total Value         = $2177.5
-Total Adjusted Gain = $-2822.5 (-56.45%)
++--------+---------+------------+-------------+-----------+-----------+----------------------+----------------------+
+| ticker |  amount | cost-basis | added-basis | cur-price | cur-value |       cur-gain       |  cur-adjusted-gain   |
++--------+---------+------------+-------------+-----------+-----------+----------------------+----------------------+
+|  TQQQ  |   50.0  |   5000.0   |     0.0     |   50.06   |   2503.0  |  -2497.0 (-49.94%)   |  -2497.0 (-49.94%)   |
+|  QCOM  | 10000.0 |  22000.0   |     0.0     |   152.83  | 1528300.0 | 1506300.0 (6846.82%) | 1506300.0 (6846.82%) |
+|  QCOM  |  200.0  |  30000.0   |     0.0     |   152.83  |  30566.0  |    566.0 (1.89%)     |    566.0 (1.89%)     |
++--------+---------+------------+-------------+-----------+-----------+----------------------+----------------------+
+Total Value         = $1561369.0
+Total Adjusted Gain = $1504369.0 (2639.24%)
 
 Brokerage: MyBroker_B
 +--------+--------+------------+-------------+-----------+-----------+------------------+-------------------+
 | ticker | amount | cost-basis | added-basis | cur-price | cur-value |     cur-gain     | cur-adjusted-gain |
 +--------+--------+------------+-------------+-----------+-----------+------------------+-------------------+
-|  SPY   |  25.0  |  10001.67  |   7501.67   |   426.17  |  10654.25 | 8154.25 (81.53%) |   652.58 (6.52%)  |
+|  SPY   |  25.0  |  10001.67  |   7501.67   |   441.07  |  11026.75 | 8526.75 (85.25%) |  1025.08 (10.25%) |
 +--------+--------+------------+-------------+-----------+-----------+------------------+-------------------+
-Total Value         = $10654.25
-Total Adjusted Gain = $652.58 (6.52%)
+Total Value         = $11026.75
+Total Adjusted Gain = $1025.08 (10.25%)
 ```
 # Special commands
 Both examples show example usage of the stock split special command. The general format of special commands is a single field of the format
@@ -128,7 +135,7 @@ Both examples show example usage of the stock split special command. The general
 Each command has a unique number of arguments depending on the required semantics. The command lines may be placed anywhere in the input stock transaction file and in any order although it is recommended for documentation purposes that such commands are placed in chronological order along with stock transactions.
 
 ## SPLIT
-The `SPLIT` command indicated a stock split event. The format of this command is as follows:
+The `SPLIT` command indicates a stock split event. The format of this command is as follows:
 
 ```
 !SPLIT#<ticker>#<amount>#<date>
