@@ -13,7 +13,8 @@ class SaleItem:
         date_acquired:str,
         date_sold:str,
         cost_basis:float,
-        wash:bool=False):
+        wash:bool=False,
+        lot_id:str=''):
 
         self.brokerage     = brokerage
         self.ticker        = ticker
@@ -27,6 +28,7 @@ class SaleItem:
 
         self.comm  = 0.0 # Must be set after sale processing
         self.dis_wash_loss = 0.0 # Must be set during sale processing
+        self.lot_id = lot_id # If sale was of a specific lot_id it is captured here
 
     @property
     def proceeds(self)->float:
@@ -85,7 +87,8 @@ class SaleItem:
                 'proceeds'      ,
                 'gain'          , 
                 'gain_per_share',
-                'allowed_loss'
+                'allowed_loss'  ,
+                'lot_id'
         ]
 
     def asdict(self)->dict:
@@ -109,6 +112,7 @@ class SaleItem:
         odict['gain']           = str(self.gain)
         odict['gain_per_share'] = str(self.gain_per_share)
         odict['allowed_loss']   = str(self.allowed_loss)
+        odict['lot_id']         = str(self.lot_id)
 
         return odict
 

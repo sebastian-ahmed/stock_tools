@@ -8,18 +8,24 @@ class StockTransaction:
     '''
 
     @classmethod
-    def from_dict(cls,dict):
+    def from_dict(cls,in_dict):
         '''
         Returns a StockTransaction object from a dict representation (e.g. JSON)
         '''
+        lot_ids = []
+        if 'lot_ids' in in_dict.keys():
+            if in_dict['lot_ids']: # CSV will provide a None value as key is not optional
+                lot_ids = in_dict['lot_ids'].split(':')
+
         return cls(
-            tr_type = str(dict['tr_type']),
-            ticker = str(dict['ticker']),
-            amount = float(dict['amount']),
-            price = float(dict['price']),
-            date = str(dict['date']),
-            comm = float(dict['comm']),
-            brokerage = str(dict['brokerage'])
+            tr_type = str(in_dict['tr_type']),
+            ticker = str(in_dict['ticker']),
+            amount = float(in_dict['amount']),
+            price = float(in_dict['price']),
+            date = str(in_dict['date']),
+            comm = float(in_dict['comm']),
+            brokerage = str(in_dict['brokerage']),
+            lot_ids = lot_ids
         )
 
     def __init__(
@@ -30,13 +36,15 @@ class StockTransaction:
         price:float = 0.0,
         date:str = None,
         comm:float = 0.0,
-        brokerage:str = None):
+        brokerage:str = None,
+        lot_ids:list=[]):
 
         self.ticker = ticker
         self.amount = amount
         self.price  = price
         self.comm   = comm
         self.brokerage = brokerage
+        self.lot_ids = lot_ids
 
         self._sold = False # Denotes that this transaction has been sold
         self._add_basis = 0.0 # Additional basis such as from a previous wash sale
@@ -56,8 +64,14 @@ class StockTransaction:
         if isinstance(tr_type,str):
             if tr_type.lower() in ['buy','sell']:
                 self.tr_type = tr_type.lower()
-                return
-        raise ValueError(f"Invalid transcation value={tr_type} must be a string 'buy' or 'sell'")
+            else:
+                raise ValueError(f"Invalid transcation value={tr_type} must be a string 'buy' or 'sell'")
+
+        if self.tr_type == 'buy' and len(self.lot_ids) > 1:
+            raise ValueError(f'Invalid lot_ids value of {self.lot_ids}. Buy transactions cannot contain more than one lot_id value')
+
+        # Remove any empty string entries
+        self.lot_ids = [x for x in self.lot_ids if len(x)>0]
 
     @property
     def is_sold(self)->bool:
@@ -81,6 +95,16 @@ class StockTransaction:
     @add_basis.setter
     def add_basis(self,val:float):
         self._add_basis += val
+
+    @property
+    def lot_id(self)->str:
+        '''
+        If this is a buy transaction returns the lot id if assigned. In all other
+        cases, returns None
+        '''
+        if self.tr_type == 'buy' and len(self.lot_ids) > 0:
+            return str(self.lot_ids[0])
+        return None
 
     def asdict(self)->dict:
         '''

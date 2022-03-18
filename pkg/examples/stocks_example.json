@@ -1,10 +1,13 @@
 # Comment lines are ignored
-{"ticker": "TQQQ", "amount": "100", "price": "100", "comm": "5", "brokerage": "MyBroker_A", "date": "2022-03-12", "tr_type": "buy"}
+{"ticker": "TQQQ", "amount": "100", "price": "100", "comm": "5", "brokerage": "MyBroker_A", "date": "2022-03-12", "tr_type": "buy", "lot_ids": "0"}
 {"ticker": "SPY", "amount": "100", "price": "1000", "comm": "5", "brokerage": "MyBroker_B", "date": "2022-03-12", "tr_type": "buy"}
+{"ticker": "TQQQ", "amount": "25", "price": "110", "comm": "5", "brokerage": "MyBroker_A", "date": "2022-04-01", "tr_type": "buy", "lot_ids": "1"}
+{"ticker": "TQQQ", "amount": "25", "price": "120", "comm": "5", "brokerage": "MyBroker_A", "date": "2022-04-05", "tr_type": "buy", "lot_ids": "2"}
 {"ticker": "SPY", "amount": "75", "price": "500", "comm": "5", "brokerage": "MyBroker_B", "date": "2022-06-25", "tr_type": "sell"}
 {"ticker": "SPY", "amount": "75", "price": "300", "comm": "5", "brokerage": "MyBroker_B", "date": "2022-07-15", "tr_type": "buy"}
 {"ticker": "SPY", "amount": "100", "price": "500", "comm": "5", "brokerage": "MyBroker_B", "date": "2022-07-16", "tr_type": "sell"}
 {"ticker": "SPY", "amount": "25", "price": "100", "comm": "5", "brokerage": "MyBroker_B", "date": "2022-08-15", "tr_type": "buy"}
+{"ticker": "TQQQ", "amount": "50", "price": "200", "comm": "5", "brokerage": "MyBroker_A", "date": "2023-03-12", "tr_type": "sell", "lot_ids": "2:1"}
 {"ticker": "TQQQ", "amount": "50", "price": "200", "comm": "5", "brokerage": "MyBroker_A", "date": "2023-03-12", "tr_type": "sell"}
 {"ticker": "QCOM", "amount": "100", "price": "220", "comm": "5", "brokerage": "MyBroker_A", "date": "2023-03-15", "tr_type": "buy"}
 {"ticker": "QCOM", "amount": "100", "price": "300", "comm": "5", "brokerage": "MyBroker_A", "date": "2024-04-16", "tr_type": "buy"}

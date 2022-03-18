@@ -13,6 +13,7 @@ from pkg.core.StockTransaction import StockTransaction
 from pkg.core.TransactionCommands import Command_SPLIT
 from pkg.core.SaleItem import SaleItem
 from pkg.core.Fifo import Fifo
+from pkg.core.ReorderFifo import ReorderFifo
 
 class StockTransactor:
     '''
@@ -20,7 +21,8 @@ class StockTransactor:
     responsible for the following operations:
     - Reading in of a stock transaction data file (using either CSV or JSON formats)
     - Processing all transactions in the file
-    - Reconciling sales relative to previous purchases using First-in-first-out (FIFO) semantics
+    - Matching sales relative to previous purchases using either the
+      First-in-first-out (FIFO) default ordering or ordering with specified buy lots
     - Error checks
         - Date order of transactions
         - Sales of non-existing or insufficient securities
@@ -260,8 +262,7 @@ class StockTransactor:
 
     def buy(self,ticker:str,amount:int,price:float,date:Any=None,comm=0.0,brokerage=None):
         '''
-        Performs a buy operation, storing the transaction in the global log and into
-        the appropriate ticker FIFO
+        Performs a buy operation
         '''
         new_tr = StockTransaction(
             tr_type='buy',
@@ -276,8 +277,7 @@ class StockTransactor:
 
     def sell(self,ticker:str,amount:int,price:float,date:Any=None,comm=0.0,brokerage=None):
         '''
-        Performs a sell operation, storing the transaction in the global log and into
-        the appropriate ticker FIFO
+        Performs a sell operation
         '''
         new_tr = StockTransaction(
             tr_type='sell',
@@ -359,6 +359,13 @@ class StockTransactor:
         # sale transaction are accounted for. Because there may be one or more buy
         # transactions that cover the sale, the main loop may have to iterate through
         # a number of entries in the FIFO
+        #
+        # There are two possible FIFO views (as defined by the variable fifo)
+        # 1) The default FIFO object built up by buy transactions which reflects the 
+        #    chronological first-in-first-out buy ordering
+        # 2) An alternative "proxy" FIFO which is adds a re-ordering layer to the
+        #    default FIFO to match an explicit sale schedule (i.e., when the sale
+        #    defines the selling of specific buy lots)
 
         # First do some checking
         if transaction.brokerage not in self._buy_transactions:
@@ -391,7 +398,20 @@ class StockTransactor:
         sale_items = [] # A list of generated SaleItem objects for this sale transaction
                         # which is only committed to self._sale_items if a sale completes
         rem_amount = transaction.amount
-        fifo = self._buy_transactions[transaction.brokerage][transaction.ticker]
+
+        # First we determine if this sell transaction has a default FIFO sequence or
+        # if it specifies custom lots. If custom lots are specified, the relevant
+        # FIFO object (for the specified ticker) is accessed directly by identifying
+        # individual lots and transacting upon those in the specified order. Upon
+        # exhausting a specific lot, the entry is popped broad-side. This is achieved by
+        # wrapping the FIFO object and virtualizing the pop operations
+        base_fifo = self._buy_transactions[transaction.brokerage][transaction.ticker]
+
+        if len(transaction.lot_ids) > 0:
+            fifo = ReorderFifo(base_fifo,transaction.lot_ids,transaction.ticker)
+        else:
+            fifo = base_fifo
+
         while rem_amount > 0:
             if len(fifo) == 0:
                 # This is an error state because we still have remaining stock to sell, but
@@ -405,8 +425,7 @@ class StockTransactor:
                 rem_amount = 0
                 if not skip_history:
                     self.history_delete_last()
-                #raise RuntimeError(f'Insufficient funds for sale of {amount} shares of {ticker}. Sale cancelled')
-                print(f'Insufficient funds for sale of {transaction.amount} shares of {transaction.ticker}. Sale cancelled')
+                raise RuntimeError(f'Insufficient funds for sale of {transaction.amount} shares of {transaction.ticker}. Sale cancelled')
                 return
 
             elif fifo.head.amount > rem_amount:
@@ -471,6 +490,7 @@ class StockTransactor:
         cost_basis = buy_tr.add_basis + (buy_tr.price * amount)
         if last:
             cost_basis += buy_tr.comm
+
         sale_item = (
             SaleItem(
                 brokerage=sell_tr.brokerage,
@@ -479,7 +499,8 @@ class StockTransactor:
                 amount=amount,
                 date_acquired=buy_tr.date,
                 date_sold=sell_tr.date,
-                cost_basis=cost_basis)
+                cost_basis=cost_basis,
+                lot_id=buy_tr.lot_id)
         )
         # Check if there is a wash sale trigger.
         # NOTE: The lot which is at the head of the FIFO cannot constitute the wash
@@ -505,7 +526,6 @@ class StockTransactor:
         state from the last file state and the current session buffer sans the last 
         operation
         '''
-        
         if len(self._history) > 0:
             self.history_delete_last()
             self.rebuild() # Re-build from data file
