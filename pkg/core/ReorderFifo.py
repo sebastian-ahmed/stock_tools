@@ -8,19 +8,21 @@ class ReorderFifo(Fifo):
     defined sequence order) appear to be organized sequentially in the FIFO.
     The wrapping layer performs the mapping of the virtual FIFO to the actual FIFO,
     so when the head of the proxy Fifo is popped, the equivalent entry in the wrapped
-     Fifo is also popped.
+    Fifo is also popped.
 
     Because ReorderFifo inherits from Fifo, it supports the same interface methods 
     '''
 
     # Implementation notes:
     # Here I use a bit of an interesting association pattern. The ReorderFifo inherits
-    # from the Fifo base class but also composes a Fifo base class object, so in a
-    # sense it is composing and inheriting at the same time. The inheritance 
-    # achieves re-use of the interface semantics and the composition achieves
+    # from the Fifo base class but also aggregates a Fifo base class object, so in a
+    # sense it is aggregating and inheriting at the same time. The inheritance 
+    # achieves re-use of the interface semantics and the aggregation achieves
     # the ability to add the re-ordering layer with a proxy FIFO data element 
-    # whilst allowing manipulation of the underlying Fifo object. We can
-    # manipulate the underlying object by calling the base class interface.
+    # whilst allowing manipulation of the underlying Fifo object in tandem
+    # Apparently this is a variation of the "proxy pattern". The only difference
+    # here is that this object receives a reference of the object it is proxying
+    # as opposed to composing it.
 
     def __init__(self,fifo:Fifo,lot_ids:list,ticker:str,*args,**kwargs):
         '''
@@ -46,15 +48,15 @@ class ReorderFifo(Fifo):
         '''
         Pushes an object into the tail (end) of the FIFO
         '''
-        self._data.append(elem)
-        super().push(elem)
+        self.fifo.push(elem) # wrapped FIFO push
+        super().push(elem) # proxy FIFO push
 
     def push_front(self,elem):
         '''
         Pushes an object to the head (front) of the FIFO
         '''
-        self._data.insert(0,elem)
-        super().push_front(elem)
+        self.fifo.push_front(elem) # wrapped FIFO push_front
+        super().push_front(elem) # proxy FIFO push_front
 
     def pop(self):
         '''
