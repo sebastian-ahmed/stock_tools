@@ -37,12 +37,48 @@ class StockTransactor:
       as undoing a transaction or detecting erroneous sales which are rolled back and ignored.
     '''
 
+    @property
+    def current_holdings(self)->dict:
+        '''
+        Returns a dict of current holdings organized as a dict of dicts of list values
+        {<brokerage>:
+                     {<ticker>: [StockTransaction]
+        
+        In order to access all buy transaction holdings for brokerage B for tickert T:
+        transactions = st.current_holdings['B']['T']
+
+        (where st is a StockTransactor object and transactions is list of StockTransaction
+        objects)
+
+        The ordering of transaction objects is such that transactions[0] would be the oldest
+        buy transaction
+        '''
+        return self._buy_transactions
+
+    @property
+    def sales(self)->dict:
+        '''
+        Returns a dict of all sales organized as a dict of dicts of list values
+        {<brokerage>:
+                     {<ticker>: [SaleItem]
+
+        In order to access all sale items for brokerage B for tickert T:
+        sale_items = st.current_holdings['B']['T']
+
+        (where st is a StockTransactor object and transactions is list of SaleItem
+        objects)
+
+        The ordering of sale items is such that sale_items[0] would be the oldest
+        sale
+        ''' 
+        return self._sale_items
+
     def __init__(self,input_file_name:str,output_file_name:str='sales.txt'):
         self._i_file_name = input_file_name
         if output_file_name == None: # Required if name passed through an argparse object
             output_file_name = 'sales.txt'
         self._o_file_name = output_file_name
-        self._buy_transactions = {} # Holds all loaded/entered buy transactions
+        self._buy_transactions = {} # Holds all loaded/entered buy transactions, keyed by brokerage
         self._history = [] # Holds a buffer of this session's transactions (for interactive sessions)
         self._sale_items = {} # Dict of dict of list of sales keyed by [brokerage][ticker]
         self._file_transactions = [] # Stores all transactions read from input file
@@ -58,15 +94,24 @@ class StockTransactor:
     ###########################################################################
     # User Methods
     ###########################################################################
-    def get_num_shares(self,brokerage:str,ticker:str)->float:
+    def get_num_shares(self,ticker:str,brokerage:str=None)->float:
         '''
-        Returns the total number of shares for ticker at a given brokerage
+        Returns the total number of shares for ticker at a given brokerage. If
+        brokerage is not specified, the total shares across all brokerages are
+        returned.
         '''
-        if brokerage not in self._buy_transactions:
-            return 0.0
-        if ticker not in self._buy_transactions[brokerage]:
-            return 0.0
-        return sum([x.amount for x in self._buy_transactions[brokerage][ticker].data])
+        if brokerage:
+            if brokerage not in self._buy_transactions:
+                return 0.0
+            if ticker not in self._buy_transactions[brokerage]:
+                return 0.0
+            return sum([x.amount for x in self._buy_transactions[brokerage][ticker].data])
+        else:
+            val = 0.0
+            for b in self._buy_transactions.keys():
+                if ticker in self._buy_transactions[b]:
+                    val += sum([x.amount for x in self._buy_transactions[b][ticker].data])
+            return val
 
     def print_report(self,date_range:Tuple[str,str]=None,fetch_quotes=False):
         '''
@@ -173,7 +218,7 @@ class StockTransactor:
                             ]
                 else: # All sales (when date_range is None)
                     sales_list = self._sale_items[brokerage][ticker]
-                total_proceeds += sum([x.proceeds for x in sales_list])
+                total_proceeds += sum([x.net_proceeds for x in sales_list])
                 total_disallowed_wash += sum([x.dis_wash_loss for x in sales_list])
                 net_gain += sum([x.gain for x in sales_list])
                 if len(sales_list) == 0:
@@ -193,7 +238,7 @@ class StockTransactor:
             ostr += f'\nTotal proceeds                = ${total_proceeds}\n'
             ostr += f'Net gain (raw)                = ${net_gain}\n'
             ostr += f'Net gain (adjusted)           = ${round(net_gain+total_disallowed_wash,2)}\n'
-            ostr += f'Total disallowed wash amounts = ${total_disallowed_wash}\n'
+            ostr += f'Total disallowed wash amounts = ${round(total_disallowed_wash,2)}\n'
         else:
             ostr += '*** There were no sales in the specified date range ***\n'
 
@@ -242,7 +287,7 @@ class StockTransactor:
                             ticker,
                             tr.amount,
                             round(cost_basis,2),
-                            tr.add_basis,
+                            round(tr.add_basis,2),
                             current_price,
                             round(current_value,2),
                             f'{round(current_gain,2)} ({current_gain_pct}%)',
@@ -250,7 +295,7 @@ class StockTransactor:
                         total_cost_basis += cost_basis
                         total_value += current_value
                     else:
-                        table.add_row([ticker,tr.amount,round(cost_basis,2),tr.add_basis])
+                        table.add_row([ticker,tr.amount,round(cost_basis,2),round(tr.add_basis,2)])
                     ostr += '\n'
             ostr += table.get_string() + '\n'
             if fetch_quotes:
@@ -260,7 +305,7 @@ class StockTransactor:
                 ostr += f'Total Adjusted Gain = ${round(net_gain,2)} ({round(net_gain_percent,2)}%)\n'
         return ostr
 
-    def buy(self,ticker:str,amount:int,price:float,date:Any=None,comm=0.0,brokerage=None):
+    def buy(self,brokerage:str,ticker:str,amount:int,price:float,date:Any=None,comm=0.0):
         '''
         Performs a buy operation
         '''
@@ -275,7 +320,7 @@ class StockTransactor:
 
         self.buy_transaction(new_tr)
 
-    def sell(self,ticker:str,amount:int,price:float,date:Any=None,comm=0.0,brokerage=None):
+    def sell(self,brokerage:str,ticker:str,amount:int,price:float,date:Any=None,comm=0.0):
         '''
         Performs a sell operation
         '''
@@ -313,6 +358,8 @@ class StockTransactor:
         '''
         Adds a StockTransaction object into a ticker FIFO for the specified brokerage
         '''
+        if transaction.brokerage is None or transaction.brokerage == '':
+            raise RuntimeError(f'Invalid brokerage value {transaction.brokerage}')
         if transaction.brokerage not in self._buy_transactions:
             # Create a new sub-dict for this brokerage
             self._buy_transactions[transaction.brokerage] = {}
@@ -462,9 +509,9 @@ class StockTransactor:
         # If we got here, the sale was successful so we need to write all generated 
         # SaleItem objects to the main dict
 
-        # First subtract the value of the sales transaction object commission 
-        # from the last generated SaleItem object
-        sale_items[-1].comm = transaction.comm
+        # We apply the sales transaction object commission to the first SaleItem
+        # object.
+        sale_items[0].comm = transaction.comm
 
         for sale_item in sale_items:
             if transaction.brokerage not in self._sale_items:
@@ -486,7 +533,8 @@ class StockTransactor:
         to the cost-basis
         '''
         # The cost-basis must take into account any previous wash sale disallowed amounts
-        # that have not been cleared out.
+        # that have not been cleared out. The commission of a fully consumed buy transaction 
+        # is also added to the costs basis
         cost_basis = buy_tr.add_basis + (buy_tr.price * amount)
         if last:
             cost_basis += buy_tr.comm
@@ -515,7 +563,7 @@ class StockTransactor:
                 # If the pre-buy or post-buy is a share amount smaller than the amount of shares in this
                 # sale, we only "wash" the amount of shares bought, not the complete sale. This is why
                 # we have the "min" term.
-                sale_item.dis_wash_loss = round(abs(sale_item.gain_per_share * (min(amount,wash_transaction.amount))),2)
+                sale_item.dis_wash_loss = abs(sale_item.gain_per_share * (min(amount,wash_transaction.amount)))
                 self._wash_sales[sell_tr.ticker] = sale_item.dis_wash_loss
         
         return sale_item
