@@ -16,7 +16,7 @@ import csv
 import os.path
 from copy import deepcopy
 from datetime import date,timedelta
-from typing import Any, Tuple
+from typing import Any, Tuple, Dict
 from collections import defaultdict
 
 from pkg.core.StockTransaction import StockTransaction
@@ -86,7 +86,8 @@ class StockTransactor:
     def __init__(self,input_file_name:str,output_file_name:str='report'):
         self._i_file_name = input_file_name
         if output_file_name == None: # Required if name passed through an argparse object
-            output_file_name = 'sales'
+            output_file_name = 'report'
+        self._o_file_name = output_file_name
         self._buy_transactions = {} # Holds all loaded/entered buy transactions, keyed by brokerage
         self._history = [] # Holds a buffer of this session's transactions (for interactive sessions)
         self._sale_items = {} # Dict of dict of list of sales keyed by [brokerage][ticker]
@@ -99,12 +100,6 @@ class StockTransactor:
         self._wash_sales = defaultdict(float) # Keyed by ticker with value being that disallowed loss
         
         self.rebuild()
-
-
-        # Generate output file-names
-        self._o_file_name_txt  = output_file_name + '.txt'
-        self._o_file_name_json = output_file_name + '.json'
-        self._o_file_name_html = output_file_name + '.html'
 
     ###########################################################################
     # User Methods
@@ -146,8 +141,8 @@ class StockTransactor:
         the holdings section of the report. This requires an internet
         connection and can cause delays in report generation
         '''
-        print(self.sales_report_str(date_range)[0])
-        print(self.holdings_report_str(fetch_quotes))
+        print(self.sales_report_str(date_range)[0]) # Index the str part of the return tuple
+        print(self.holdings_report_str(fetch_quotes)[0]) # Index the str part of the return tuple
 
 
     def write_report(self,date_range:Tuple[str,str]=None,fetch_quotes=False):
@@ -172,15 +167,27 @@ class StockTransactor:
         connection and can cause delays in report generation
         '''
 
-        with open(self._o_file_name_txt,'w') as f:
+        # Unified text report
+        with open(self._o_file_name+'.txt','w') as f:
             f.write(self.sales_report_str(date_range)[0]) # Select str part of tuple
-            f.write(self.holdings_report_str(fetch_quotes))
+            f.write(self.holdings_report_str(fetch_quotes)[0]) # Select str part of tuple
 
-        with open(self._o_file_name_json,'w') as f:
+        # Sales output files
+        with open(self._o_file_name+'_sales.json','w') as f:
             f.write(self.sales_report_str(date_range)[1].get_json_string()) # select table part of tuple
 
-        with open(self._o_file_name_html,'w') as f:
+        with open(self._o_file_name+'_sales.html','w') as f:
             f.write(self.sales_report_str(date_range)[1].get_html_string()) # select table part of tuple
+
+        # Holdings output files (one file per brokerage per type)
+        tables = self.holdings_report_str(date_range)[1] # select the dict of tables
+
+        for brokerage in tables.keys():
+            with open(self._o_file_name+'_holdings_'+brokerage+'.json','w') as f:
+                f.write(tables[brokerage].get_json_string())
+
+            with open(self._o_file_name+'_holdings_'+brokerage+'.html','w') as f:
+                f.write(tables[brokerage].get_html_string())
 
     ###########################################################################
     # Internal Methods
@@ -270,10 +277,13 @@ class StockTransactor:
 
         return ostr,table
 
-    def holdings_report_str(self,fetch_quotes=False):
+    def holdings_report_str(self,fetch_quotes=False)->Tuple[str,Dict]:
         '''
-        Returns the current holdings report string
+        Returns the current holdings report as a tuple of the report string
+        and a dict of PrettyTable objects keyed by brokerage strings
         '''
+        tables = {} # Dict of PrettyTable objects
+
         ostr = self.banner_wrap_str('HOLDINGS REPORT',level=0)
         for brokerage in self._buy_transactions.keys():
             total_value = 0.
@@ -329,7 +339,9 @@ class StockTransactor:
                 net_gain_percent = 100*net_gain/(total_cost_basis)
                 ostr += f'Total Value         = ${round(total_value,2)}\n'
                 ostr += f'Total Adjusted Gain = ${round(net_gain,2)} ({round(net_gain_percent,2)}%)\n'
-        return ostr
+            tables[brokerage] = table
+
+        return ostr, tables
 
     def buy(self,brokerage:str,ticker:str,amount:int,price:float,date:Any=None,comm=0.0):
         '''

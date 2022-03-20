@@ -39,11 +39,13 @@ On a command line, assuming an input file stocks.csv, simply run:
 ```
 python process.py --infile stocks.csv --fetch_quotes
 ```
-This will generate the default report file `sales.txt` which includes the values and gains of resulting holdings based on current stock prices. In addition to this, the following files are created which capture just the sales summary table:
-- `sales.json` : A serialized version of the sales output table in JSON format.
-- `sales.html` : A HTML output version of the sales output table
+This will generate the default report file `report.txt` which includes the values and gains of resulting holdings based on current stock prices. In addition to this, the following files are created which capture the sales and holdings summary tables:
+- `report_sales.json` : A serialized version of the sales output table in JSON format.
+- `report_sales.html` : An HTML output version of the sales output table
+- `report_holdings_<brokerage>.json` : A serialized version of the holdings output table in JSON format. One file per brokerage
+- `report_holdings_<brokerage>.html` : An HTML output version of the holdings output table. One file per brokerage
 
-Note that the base-name `sales` can be changed using the `--outfile` command line argument
+Note that the base-name `report` can be changed using the `--outfile` command line argument
 
 Full usage can be printed via the `--help` command line option, and is show here for convenience:
 ```
