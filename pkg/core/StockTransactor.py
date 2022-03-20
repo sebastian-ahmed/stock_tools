@@ -146,7 +146,7 @@ class StockTransactor:
         the holdings section of the report. This requires an internet
         connection and can cause delays in report generation
         '''
-        print(self.sales_report_str(date_range))
+        print(self.sales_report_str(date_range)[0])
         print(self.holdings_report_str(fetch_quotes))
 
 
