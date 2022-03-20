@@ -30,6 +30,13 @@ class test_StockTransaction(unittest.TestCase):
             brokerage = ''.join(random.choice(letters) for i in range(random.randint(1,30)))
             is_sold   = bool(random.randint(0,1))
             add_basis = random.random()
+            sale_ids  = random.choice(['','0','1:2','1:2:3:4','2:5:1:3'])
+            buy_id    = ''.join(random.choice(letters) for i in range(random.randint(1,30)))
+            if tr_type == 'sell':
+                lot_ids = sale_ids
+            else:
+                lot_ids = buy_id
+            lot_ids = lot_ids.split(':')
 
             days_offset = random.randint(-500,500)
             dd = timedelta(days=days_offset)
@@ -43,7 +50,8 @@ class test_StockTransaction(unittest.TestCase):
                 price=price,
                 comm=comm,
                 brokerage=brokerage,
-                date=rand_date
+                date=rand_date,
+                lot_ids=lot_ids
             )
 
             # update post-init properties
@@ -59,6 +67,19 @@ class test_StockTransaction(unittest.TestCase):
             self.assertEqual(st.is_sold,is_sold)
             self.assertEqual(st.add_basis,add_basis)
             self.assertEqual(st.date,rand_date)
+            # lot_ids will remove empty id strings, so for these cases we
+            # need to adjust the expected value
+            filtered_lot_ids = [x for x in lot_ids if len(x)>0]
+            self.assertEqual(st.lot_ids,filtered_lot_ids)
+
+            # Check properties
+            self.assertEqual(st.is_sold,is_sold)
+            self.assertEqual(st.add_basis,add_basis)
+            if st.tr_type == 'sell' or len(filtered_lot_ids) == 0:
+                lot_id = None
+            else:
+                lot_id = filtered_lot_ids[0]
+            self.assertEqual(st.lot_id,lot_id)
 
             # Check asdict()
             asdict = st.asdict()
@@ -71,7 +92,8 @@ class test_StockTransaction(unittest.TestCase):
                 'brokerage':str(brokerage),
                 'is_sold':str(is_sold),
                 'add_basis':str(add_basis),
-                'date':str(rand_date)
+                'date':str(rand_date),
+                'lot_ids':':'.join(filtered_lot_ids)
             }
             self.assertEqual(sorted(list(asdict.keys())),sorted(list(ref_dict.keys())))
             self.assertEqual(asdict,ref_dict)
