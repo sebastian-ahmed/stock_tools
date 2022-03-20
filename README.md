@@ -10,6 +10,19 @@
 - Provides additional output formats of the sales summary including JSON serialized output and HTML 
 - Includes a report of holdings optionally with current stock prices and resulting valuation and gain per holding (by connecting directly to the Yahoo Finance web API)
 
+# Contents
+- [Overview](#overview)
+- [Contents](#contents)
+- [Usage](#usage)
+  - [Required Python packages](#required-python-packages)
+  - [Using the run-script](#using-the-run-script)
+  - [Using the StockTransactor Class](#using-the-stocktransactor-class)
+  - [Running examples](#running-examples)
+- [Example Output](#example-output)
+- [Notes about calculations](#notes-about-calculations)
+- [Special commands](#special-commands)
+  - [SPLIT](#split)
+  - [Programmatical commands](#programmatical-commands)
 # Usage
 There are two general usage modes. The simplest and recommended mode is to to use the included top-level run-script. Advanced users may programmatically use the core processing class as part of their own custom script.
 
@@ -130,6 +143,17 @@ Brokerage: MyBroker_B
 Total Value         = $11026.75
 Total Adjusted Gain = $1025.08 (10.25%)
 ```
+
+# Notes about calculations
+As of now, there are some encoded rules in relation to gain and cost-basis calculations that users should be aware of:
+- No rounding is performed in any calculations until a result is reporting to the terminal or a file. 
+- When a stock sale covers multiple buy lot transactions:
+  - The sale transaction commission is applied to the *net proceeds* of the first generated sale item. It is not distributed across all generated sale items. From a tax-reporting perspective, this is arbitrary as long as it is accounted for and not double counted anywhere.
+- When a sale transaction does not consume an entire buy lot, the buy transaction commission is not added to the cost basis of the buy. Only when a buy transaction is fully consumed, is the commission added to the cost basis. This also avoids double counting so that the commission is only ever applied to a single sale item.
+- *net_proceeds*, *gain* and *gain_per_share* sale item fields all take into account commissions, but do not include disallowed wash-sale amounts. If a sale is a loss with a disallowe wash amount, the reportable loss value is captured in the *allowed_loss* field (which is an absolute value)
+- Long-term designation occurs when the difference between the acquired date and sold date is greater or equal to 366 days
+- 
+
 # Special commands
 Both examples show example usage of the stock split special command. The general format of special commands is a single field of the format
 
