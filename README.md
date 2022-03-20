@@ -19,7 +19,7 @@ In order to use `stock_tools` you must have the following Python environment ins
     - `yfinance`
     - `prettytable`
 
-## Using run-script
+## Using the run-script
 On a command line, assuming an input file stocks.csv, simply run:
 ```
 python process.py --infile stocks.csv --fetch_quotes
@@ -41,7 +41,7 @@ options:
   --fetch_quotes        Includes current values based on current stock prices. Note: This causes a slow-down in report generation due to web API calls
   ```
 
-## Using StockTransactor Class
+## Using the StockTransactor Class
 This method involves creating a `StockTransactor` object with an input file argument. This initialization step will cause the `StockTransactor` to read the input file, and perform the processing of transactions. Following this, the user can generate reports to the terminal or to a file. Currently there ar two input formats supported: `CSV` and `JSON`. Examples of both formats can be found in the [examples directory](./pkg/examples/).
 
 Below is a snippet which shows the minial steps:
