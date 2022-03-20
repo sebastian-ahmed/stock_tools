@@ -121,6 +121,7 @@ class StockTransaction:
         odict['brokerage'] = str(self.brokerage)
         odict['is_sold']   = str(self.is_sold)
         odict['add_basis'] = str(self.add_basis)
+        odict['lot_ids']   = ':'.join(self.lot_ids)
         return odict
 
     def __str__(self):
