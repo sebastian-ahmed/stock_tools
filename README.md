@@ -19,6 +19,7 @@
   - [Using the StockTransactor Class](#using-the-stocktransactor-class)
   - [Running examples](#running-examples)
 - [Example Output](#example-output)
+- [Sale ordering](#sale-ordering)
 - [Notes about calculations](#notes-about-calculations)
 - [Special commands](#special-commands)
   - [SPLIT](#split)
@@ -143,16 +144,29 @@ Brokerage: MyBroker_B
 Total Value         = $11026.75
 Total Adjusted Gain = $1025.08 (10.25%)
 ```
+# Sale ordering
+In order to generate reportable sale items, each sale transaction must be matched to one or more previous buy transactions which we can refer to as *buy lots*. This is an ordering concept. `stock_tools` supports two ordering modes which match the typical brokerage behaviors:
+- Default ordering using first-in-first-out (FIFO) semantics:
+  - The matching operation processes oldest buy lots first and works its way through to newer buy lots until all shares specified by the *amount* field in the input file are accounted for
+  - No special instruction or configuration is required to enable the default mode
+- User-defined ordering with specific buy lots:
+  - In order to instruct the program to perform this user-defined ordering two things must be specified in the input file
+    - Participating buy lots must be marked with an identifier using the *buy_ids* field (`buy_ids="<ID>"` for JSON input, or simply `<ID>` in the *buy_ids* column of a CSV file)
+    - The identifiers must be unique within the ticker symbol namespace of a given brokerage. This means that if identifiers 'a' and 'b' were used for ticker XYZ, the same identifiers can safely be used for a different ticker, or for the same ticker in a different brokerage
+    - The sale transaction which sells a specific lot or lots must be specified as a colon-delimited list/sequence using the *buy_ids* field
+      - In the JSON input format, this will look as follows `buy_ids="<FIRST LOT ID>:<SECOND LOT ID>:..."`. The CSV input format is the same except the string is placed directly in the *buy_ids* column. The ordering follows the left to the right order.
+      - Both example input files demonstrate the format
+      - Simply ommitting the *buy_ids* field treats the sale as FIFO ordering based
+- In both cases, if there are insufficient stocks to carry out the full sale, a `RuntimeError` exeption is raised
 
 # Notes about calculations
 As of now, there are some encoded rules in relation to gain and cost-basis calculations that users should be aware of:
-- No rounding is performed in any calculations until a result is reporting to the terminal or a file. 
+- No rounding is performed in any calculations until a result is reported to the terminal or a file. 
 - When a stock sale covers multiple buy lot transactions:
   - The sale transaction commission is applied to the *net proceeds* of the first generated sale item. It is not distributed across all generated sale items. From a tax-reporting perspective, this is arbitrary as long as it is accounted for and not double counted anywhere.
 - When a sale transaction does not consume an entire buy lot, the buy transaction commission is not added to the cost basis of the buy. Only when a buy transaction is fully consumed, is the commission added to the cost basis. This also avoids double counting so that the commission is only ever applied to a single sale item.
-- *net_proceeds*, *gain* and *gain_per_share* sale item fields all take into account commissions, but do not include disallowed wash-sale amounts. If a sale is a loss with a disallowe wash amount, the reportable loss value is captured in the *allowed_loss* field (which is an absolute value)
+- *net_proceeds*, *gain* and *gain_per_share* sale item fields all take into account commissions, but do not include disallowed wash-sale amounts. If a sale is a loss with a disallowed wash amount, the reportable loss value is captured in the *allowed_loss* field (which is an absolute value)
 - Long-term designation occurs when the difference between the acquired date and sold date is greater or equal to 366 days
-- 
 
 # Special commands
 Both examples show example usage of the stock split special command. The general format of special commands is a single field of the format
