@@ -13,25 +13,31 @@ class SaleItem:
         date_acquired:str,
         date_sold:str,
         cost_basis:float,
-        wash:bool=False,
-        lot_id:str=''):
+        lot_id:str=None):
 
+        # These fields come from initialization
         self.brokerage     = brokerage
         self.ticker        = ticker
-        self.sale_price    = sale_price
-        self.amount        = amount
+        self.sale_price    = float(sale_price)
+        self.amount        = float(amount)
         self.date_acquired = date_acquired
         self.date_sold     = date_sold
-        self.cost_basis    = cost_basis
+        self.cost_basis    = float(cost_basis)
         self.short_term    = self.is_short_term(date_acquired,date_sold)
-        self.wash          = wash
+        self.lot_id        = lot_id # If sale was of a specific lot_id it is captured here
 
-        self.comm  = 0.0 # Must be set after sale processing
-        self.dis_wash_loss = 0.0 # Must be set during sale processing
-        self.lot_id = lot_id # If sale was of a specific lot_id it is captured here
+        # These fields should be set after initialization because this
+        # object must first be able to calculate the raw loss or gain
+        # Once this is known, a wash sale can be established
+        # Secondly, because a single sale transaction can generate multiple
+        # SaleItem objects, we allow the higher layer to determine to which
+        # SaleItem the sale transaction commission is applied to
+        self.wash          = False
+        self.dis_wash_loss = 0.0
+        self.comm          = 0.0
 
     @property
-    def proceeds(self)->float:
+    def net_proceeds(self)->float:
         '''
         Returns the proceeds from the sale minus any commissions
         '''
@@ -62,7 +68,7 @@ class SaleItem:
         '''
         Returns the gain per share (positive) or loss (negative) for this sale
         '''
-        return self.sale_price - (self.cost_basis/self.amount)
+        return self.gain/self.amount
 
     @staticmethod
     def fields_list()->list:
@@ -84,7 +90,7 @@ class SaleItem:
                 'wash'          , 
                 'comm'          , 
                 'dis_wash_loss' ,
-                'proceeds'      ,
+                'net_proceeds'  ,
                 'gain'          , 
                 'gain_per_share',
                 'allowed_loss'  ,
@@ -108,7 +114,7 @@ class SaleItem:
         odict['wash']           = str(self.wash)
         odict['comm']           = str(self.comm)
         odict['dis_wash_loss']  = str(self.dis_wash_loss)
-        odict['proceeds']       = str(self.proceeds)
+        odict['net_proceeds']   = str(self.net_proceeds)
         odict['gain']           = str(self.gain)
         odict['gain_per_share'] = str(self.gain_per_share)
         odict['allowed_loss']   = str(self.allowed_loss)
@@ -142,7 +148,7 @@ class SaleItem:
         d_buy = date.fromisoformat(buy_date)
         d_sell = date.fromisoformat(sell_date)
         d_diff = d_sell - d_buy
-        return (d_diff.days < 365)
+        return (d_diff.days < 366)
 
     def __raw_gain(self):
-        return (self.amount * self.sale_price) - self.cost_basis
+        return (self.amount * self.sale_price) - self.cost_basis - self.comm
