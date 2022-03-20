@@ -152,12 +152,13 @@ In order to generate reportable sale items, each sale transaction must be matche
 - User-defined ordering with specific buy lots:
   - In order to instruct the program to perform this user-defined ordering two things must be specified in the input file
     - Participating buy lots must be marked with an identifier using the *buy_ids* field (`buy_ids="<ID>"` for JSON input, or simply `<ID>` in the *buy_ids* column of a CSV file)
-    - The identifiers must be unique within the ticker symbol namespace of a given brokerage. This means that if identifiers 'a' and 'b' were used for ticker XYZ, the same identifiers can safely be used for a different ticker, or for the same ticker in a different brokerage
+      - The identifiers must be unique within the ticker symbol namespace of a given brokerage. This means that if identifiers 'a' and 'b' were used for ticker XYZ, the same identifiers can safely be used for a different ticker, or for the same ticker in a different brokerage
     - The sale transaction which sells a specific lot or lots must be specified as a colon-delimited list/sequence using the *buy_ids* field
       - In the JSON input format, this will look as follows `buy_ids="<FIRST LOT ID>:<SECOND LOT ID>:..."`. The CSV input format is the same except the string is placed directly in the *buy_ids* column. The ordering follows the left to the right order.
+      - It is up to the user to make sure that the specified lots have a sufficient amount of shares for the sale. The program will not switch to default ordering (to look for older buy lots) in order to complete the sale.
       - Both example input files demonstrate the format
       - Simply ommitting the *buy_ids* field treats the sale as FIFO ordering based
-- In both cases, if there are insufficient stocks to carry out the full sale, a `RuntimeError` exeption is raised
+- In both cases, if there are insufficient shares to carry out the full sale, a `RuntimeError` exeption is raised
 
 # Notes about calculations
 As of now, there are some encoded rules in relation to gain and cost-basis calculations that users should be aware of:
