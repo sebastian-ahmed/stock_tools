@@ -83,11 +83,10 @@ class StockTransactor:
         ''' 
         return self._sale_items
 
-    def __init__(self,input_file_name:str,output_file_name:str='sales.txt'):
+    def __init__(self,input_file_name:str,output_file_name:str='report'):
         self._i_file_name = input_file_name
         if output_file_name == None: # Required if name passed through an argparse object
-            output_file_name = 'sales.txt'
-        self._o_file_name = output_file_name
+            output_file_name = 'sales'
         self._buy_transactions = {} # Holds all loaded/entered buy transactions, keyed by brokerage
         self._history = [] # Holds a buffer of this session's transactions (for interactive sessions)
         self._sale_items = {} # Dict of dict of list of sales keyed by [brokerage][ticker]
@@ -100,6 +99,12 @@ class StockTransactor:
         self._wash_sales = defaultdict(float) # Keyed by ticker with value being that disallowed loss
         
         self.rebuild()
+
+
+        # Generate output file-names
+        self._o_file_name_txt  = output_file_name + '.txt'
+        self._o_file_name_json = output_file_name + '.json'
+        self._o_file_name_html = output_file_name + '.html'
 
     ###########################################################################
     # User Methods
@@ -148,6 +153,9 @@ class StockTransactor:
     def write_report(self,date_range:Tuple[str,str]=None,fetch_quotes=False):
         '''
         Writes report of sales and resulting holdings to report file.
+        Also writes a JSON output of sales with extension .json and HTML
+        file with extension .html
+
         When no date_range is specified,
         writes all sales, otherwise writes sales in the specified range.
         When specifying a date range, a tuple of ISO format string dates must
@@ -163,17 +171,25 @@ class StockTransactor:
         the holdings section of the report. This requires an internet
         connection and can cause delays in report generation
         '''
-        with open(self._o_file_name,'w') as f:
-            f.write(self.sales_report_str(date_range))
+
+        with open(self._o_file_name_txt,'w') as f:
+            f.write(self.sales_report_str(date_range)[0]) # Select str part of tuple
             f.write(self.holdings_report_str(fetch_quotes))
+
+        with open(self._o_file_name_json,'w') as f:
+            f.write(self.sales_report_str(date_range)[1].get_json_string()) # select table part of tuple
+
+        with open(self._o_file_name_html,'w') as f:
+            f.write(self.sales_report_str(date_range)[1].get_html_string()) # select table part of tuple
 
     ###########################################################################
     # Internal Methods
     ###########################################################################
 
-    def sales_report_str(self,date_range:Tuple[str,str]=None)->str:
+    def sales_report_str(self,date_range:Tuple[str,str]=None)->Tuple[str,PrettyTable]:
         '''
-        Returns the sales report string for printing to screen or file
+        Returns a tuplle of the sales report string for printing to screen or file
+        and the PrettyTable table object (useful for serialization)
         '''
         ostr = self.banner_wrap_str('SALES REPORT',level=0)
 
@@ -252,7 +268,7 @@ class StockTransactor:
         else:
             ostr += '*** There were no sales in the specified date range ***\n'
 
-        return ostr
+        return ostr,table
 
     def holdings_report_str(self,fetch_quotes=False):
         '''

@@ -23,7 +23,7 @@ def proc_cla(iparser:argparse.ArgumentParser=None,descr:str='')->argparse.Argume
         parser = argparse.ArgumentParser(description=descr)
     
     parser.add_argument('--infile',     metavar='<stock transaction file>', type=str,  help='Specifies the file which contains stock transactions. Supported formats are .csv and .json')
-    parser.add_argument('--outfile',    metavar='<output report file>',     type=str,  help='Optionally specifies an output file for the report')
+    parser.add_argument('--outfile',    metavar='<output report file>',     type=str,  help='Optionally specifies an output file base-name for the reports')
     parser.add_argument('--date_start', metavar='<YYYY-MM-DD>',             type=str,  help='Optionally specifies a start date for report generation. If not specified, the date of the first transaction is used')
     parser.add_argument('--date_end',   metavar='<YYYY-MM-DD>',             type=str,  help='Optionally specifies an end date for report generation. If not specified, the date of the last transaction is used')
     parser.add_argument('--fetch_quotes', action='store_true',                         help='Includes current values based on current stock prices. Note: This causes a slow-down in report generation due to web API calls')

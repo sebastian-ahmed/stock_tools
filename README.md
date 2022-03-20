@@ -7,6 +7,7 @@
     - When a wash-sale-triggering buy is a smaller lot than the wash sale, the disallowed loss amount is only based on the number of stocks of the buy lot
     - Wash sales are analyzed across different brokerage entries as required by the tax code
 - Provision for entering custom commands to describe events such as **stock splits**. Stock splits are retroactively applied to relevant buy lots in the input stock transaction history.
+- Provides additional output formats of the sales summary including JSON serialized output and HTML 
 - Includes a report of holdings optionally with current stock prices and resulting valuation and gain per holding (by connecting directly to the Yahoo Finance web API)
 
 # Usage
@@ -24,7 +25,11 @@ On a command line, assuming an input file stocks.csv, simply run:
 ```
 python process.py --infile stocks.csv --fetch_quotes
 ```
-This will generate the default report file `sales.txt` which includes the values and gains of resulting holdings based on current stock prices
+This will generate the default report file `sales.txt` which includes the values and gains of resulting holdings based on current stock prices. In addition to this, the following files are created which capture just the sales summary table:
+- `sales.json` : A serialized version of the sales output table in JSON format.
+- `sales.html` : A HTML output version of the sales output table
+
+Note that the base-name `sales` can be changed using the `--outfile` command line argument
 
 Full usage can be printed via the `--help` command line option, and is show here for convenience:
 ```
@@ -33,7 +38,7 @@ options:
   --infile <stock transaction file>
                         Specifies the file which contains stock transactions. Supported formats are .csv and .json
   --outfile <output report file>
-                        Optionally specifies an output file for the report
+                        Optionally specifies an output file base-name for the reports
   --date_start <YYYY-MM-DD>
                         Optionally specifies a start date for report generation. If not specified, the date of the first transaction is used
   --date_end <YYYY-MM-DD>
