@@ -10,6 +10,8 @@
 - Provides additional output formats of the sales summary including JSON serialized output and HTML 
 - Includes a report of holdings optionally with current stock prices and resulting valuation and gain per holding (by connecting directly to the Yahoo Finance web API)
 
+NOTE: Dividend re-investment plans (DRIPs) are assumed to be modelled as regular stock purchase transactions. Regular dividend payments (1099-DIV) are orthogonal to stock sale reporting and are not considered as part of `stock_tools`
+
 # Contents
 - [Overview](#overview)
 - [Contents](#contents)
@@ -39,11 +41,11 @@ On a command line, assuming an input file stocks.csv, simply run:
 ```
 python process.py --infile stocks.csv --fetch_quotes
 ```
-This will generate the default report file `report.txt` which includes the values and gains of resulting holdings based on current stock prices. In addition to this, the following files are created which capture the sales and holdings summary tables:
-- `report_sales.json` : A serialized version of the sales output table in JSON format.
+This will generate the default report file `report_consolidated.txt` which includes the values and gains of resulting holdings based on current stock prices. In addition to this, the following files are created which capture the sales and holdings summary tables:
+- `report_sales.json` : A serialized version of the sales output table in JSON format
 - `report_sales.html` : An HTML output version of the sales output table
-- `report_holdings_<brokerage>.json` : A serialized version of the holdings output table in JSON format. One file per brokerage
-- `report_holdings_<brokerage>.html` : An HTML output version of the holdings output table. One file per brokerage
+- `report_holdings.json` : A serialized version of the holdings output table in JSON format
+- `report_holdings.html` : An HTML output version of the holdings output table
 
 Note that the base-name `report` can be changed using the `--outfile` command line argument
 

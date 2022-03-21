@@ -168,7 +168,7 @@ class StockTransactor:
         '''
 
         # Unified text report
-        with open(self._o_file_name+'.txt','w') as f:
+        with open(self._o_file_name+'_consolidated.txt','w') as f:
             f.write(self.sales_report_str(date_range)[0]) # Select str part of tuple
             f.write(self.holdings_report_str(fetch_quotes)[0]) # Select str part of tuple
 
@@ -179,15 +179,24 @@ class StockTransactor:
         with open(self._o_file_name+'_sales.html','w') as f:
             f.write(self.sales_report_str(date_range)[1].get_html_string()) # select table part of tuple
 
-        # Holdings output files (one file per brokerage per type)
+        # Holdings output files
         tables = self.holdings_report_str(date_range)[1] # select the dict of tables
 
-        for brokerage in tables.keys():
-            with open(self._o_file_name+'_holdings_'+brokerage+'.json','w') as f:
-                f.write(tables[brokerage].get_json_string())
+        with open(self._o_file_name+'_holdings.json','w') as f:
+            fstr = '{'
+            for brokerage in tables.keys():
+                fstr += f'\n"{brokerage}":\n'
+                fstr += tables[brokerage].get_json_string()
+                fstr += ','
+            fstr = fstr[:-1] + '\n}'       
+            f.write(fstr)
 
-            with open(self._o_file_name+'_holdings_'+brokerage+'.html','w') as f:
-                f.write(tables[brokerage].get_html_string())
+        fstr = f'<h1>HOLDINGS REPORT ({date.today()})</h1>\n'
+        with open(self._o_file_name+'_holdings.html','w') as f:
+            for brokerage in tables.keys():
+                fstr += f'\n<h2>{brokerage}</h2>\n'
+                fstr += tables[brokerage].get_html_string()
+            f.write(fstr)
 
     ###########################################################################
     # Internal Methods
@@ -195,7 +204,7 @@ class StockTransactor:
 
     def sales_report_str(self,date_range:Tuple[str,str]=None)->Tuple[str,PrettyTable]:
         '''
-        Returns a tuplle of the sales report string for printing to screen or file
+        Returns a tuple of the sales report string for printing to screen or file
         and the PrettyTable table object (useful for serialization)
         '''
         ostr = self.banner_wrap_str('SALES REPORT',level=0)
@@ -694,7 +703,7 @@ class StockTransactor:
     def process_command(self,cmd_str:str):
         '''
         Processes command entries in stock transaction input file. Expected formats
-        of commands are '#<COMMAND>#Argument1#Argument2#Argument3...'
+        of commands are '!<COMMAND>#Argument1#Argument2#Argument3...'
         '''
         cmd_full = cmd_str[1:].split('#') # Remove the '!' char at start of string
         cmd_word = cmd_full[0]
