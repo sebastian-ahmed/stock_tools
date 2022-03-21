@@ -66,7 +66,7 @@ class StockTransaction:
                 try:
                     self.date = str(datetime.date.fromisoformat(date))
                 except:
-                    print(f'Date provided: is not a valid format YYYY-MM-DD')
+                    print(f'Provided date "{date}" is not a valid format YYYY-MM-DD')
                     raise
             else:
                 raise ValueError('Date provided is not a supported type datetime.date or string ISO format YYYY-MM-DD')
