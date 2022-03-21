@@ -17,13 +17,15 @@ import os.path
 from copy import deepcopy
 from datetime import date,timedelta
 from typing import Any, Tuple, Dict
-from collections import defaultdict
+from collections import defaultdict, namedtuple
 
 from pkg.core.StockTransaction import StockTransaction
 from pkg.core.TransactionCommands import Command_SPLIT
 from pkg.core.SaleItem import SaleItem
 from pkg.core.Fifo import Fifo
 from pkg.core.ReorderFifo import ReorderFifo
+
+ReportInfo = namedtuple('ReportInfo', ['heading', 'main_string', 'tables'])
 
 class StockTransactor:
     '''
@@ -141,8 +143,8 @@ class StockTransactor:
         the holdings section of the report. This requires an internet
         connection and can cause delays in report generation
         '''
-        print(self.sales_report_str(date_range)[0]) # Index the str part of the return tuple
-        print(self.holdings_report_str(fetch_quotes)[0]) # Index the str part of the return tuple
+        print(self.sales_report_str(date_range).main_string)
+        print(self.holdings_report_str(fetch_quotes).main_string)
 
 
     def write_report(self,date_range:Tuple[str,str]=None,fetch_quotes=False):
@@ -169,18 +171,19 @@ class StockTransactor:
 
         # Unified text report
         with open(self._o_file_name+'_consolidated.txt','w') as f:
-            f.write(self.sales_report_str(date_range)[0]) # Select str part of tuple
-            f.write(self.holdings_report_str(fetch_quotes)[0]) # Select str part of tuple
+            f.write(self.sales_report_str(date_range).main_string)
+            f.write(self.holdings_report_str(fetch_quotes).main_string)
 
         # Sales output files
         with open(self._o_file_name+'_sales.json','w') as f:
-            f.write(self.sales_report_str(date_range)[1].get_json_string()) # select table part of tuple
+            f.write(self.sales_report_str(date_range).tables.get_json_string())
 
         with open(self._o_file_name+'_sales.html','w') as f:
-            f.write(self.sales_report_str(date_range)[1].get_html_string()) # select table part of tuple
+            f.write('<h1>' + self.sales_report_str(date_range).heading + '</h1>')
+            f.write(self.sales_report_str(date_range).tables.get_html_string())
 
         # Holdings output files
-        tables = self.holdings_report_str(date_range)[1] # select the dict of tables
+        tables = self.holdings_report_str(date_range).tables
 
         with open(self._o_file_name+'_holdings.json','w') as f:
             fstr = '{'
@@ -191,7 +194,7 @@ class StockTransactor:
             fstr = fstr[:-1] + '\n}'       
             f.write(fstr)
 
-        fstr = f'<h1>HOLDINGS REPORT ({date.today()})</h1>\n'
+        fstr = f'<h1>{self.holdings_report_str(date_range).heading}</h1>\n'
         with open(self._o_file_name+'_holdings.html','w') as f:
             for brokerage in tables.keys():
                 fstr += f'\n<h2>{brokerage}</h2>\n'
@@ -202,12 +205,11 @@ class StockTransactor:
     # Internal Methods
     ###########################################################################
 
-    def sales_report_str(self,date_range:Tuple[str,str]=None)->Tuple[str,PrettyTable]:
+    def sales_report_str(self,date_range:Tuple[str,str]=None)->ReportInfo:
         '''
-        Returns a tuple of the sales report string for printing to screen or file
+        Returns a tuple of the heading, the sales report string for printing to screen or file
         and the PrettyTable table object (useful for serialization)
         '''
-        ostr = self.banner_wrap_str('SALES REPORT',level=0)
 
         if date_range:
             if date_range[0]:
@@ -220,7 +222,9 @@ class StockTransactor:
                 d2 = None
             if d2 and d1 and d2 < d1:
                 raise RuntimeError(f'Specified a negative date range: from {d1} to {d2}')
-            ostr += f'Date range: {d1} to {d2}\n'
+
+        heading = f'SALES REPORT ({d1} to {d2})'
+        ostr = self.banner_wrap_str(heading,level=0)
 
         total_proceeds = 0.0
         net_gain = 0.0
@@ -284,16 +288,17 @@ class StockTransactor:
         else:
             ostr += '*** There were no sales in the specified date range ***\n'
 
-        return ostr,table
+        return ReportInfo(heading, ostr,table)
 
-    def holdings_report_str(self,fetch_quotes=False)->Tuple[str,Dict]:
+    def holdings_report_str(self,fetch_quotes=False)->ReportInfo:
         '''
-        Returns the current holdings report as a tuple of the report string
-        and a dict of PrettyTable objects keyed by brokerage strings
+        Returns the current holdings report as a tuple of the headin,
+        report string and a dict of PrettyTable objects keyed by brokerage strings
         '''
         tables = {} # Dict of PrettyTable objects
 
-        ostr = self.banner_wrap_str('HOLDINGS REPORT',level=0)
+        heading = f'HOLDINGS REPORT ({date.today()})'
+        ostr = self.banner_wrap_str(heading,level=0)
         for brokerage in self._buy_transactions.keys():
             total_value = 0.
             total_cost_basis = 0.0
@@ -350,7 +355,7 @@ class StockTransactor:
                 ostr += f'Total Adjusted Gain = ${round(net_gain,2)} ({round(net_gain_percent,2)}%)\n'
             tables[brokerage] = table
 
-        return ostr, tables
+        return ReportInfo(heading, ostr, tables)
 
     def buy(self,brokerage:str,ticker:str,amount:int,price:float,date:Any=None,comm=0.0):
         '''
