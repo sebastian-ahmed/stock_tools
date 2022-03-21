@@ -169,21 +169,26 @@ class StockTransactor:
         connection and can cause delays in report generation
         '''
 
+        # Prime the reports to avoid re-processing time-consuming operations
+        sales_report = self.sales_report_str(date_range)
+        holdings_report = self.holdings_report_str(fetch_quotes)
+
+
         # Unified text report
         with open(self._o_file_name+'_consolidated.txt','w') as f:
-            f.write(self.sales_report_str(date_range).main_string)
-            f.write(self.holdings_report_str(fetch_quotes).main_string)
+            f.write(sales_report.main_string)
+            f.write(holdings_report.main_string)
 
         # Sales output files
         with open(self._o_file_name+'_sales.json','w') as f:
-            f.write(self.sales_report_str(date_range).tables.get_json_string())
+            f.write(sales_report.tables.get_json_string())
 
         with open(self._o_file_name+'_sales.html','w') as f:
-            f.write('<h1>' + self.sales_report_str(date_range).heading + '</h1>')
-            f.write(self.sales_report_str(date_range).tables.get_html_string())
+            f.write('<h1>' + sales_report.heading + '</h1>')
+            f.write(sales_report.tables.get_html_string())
 
         # Holdings output files
-        tables = self.holdings_report_str(date_range).tables
+        tables = holdings_report.tables
 
         with open(self._o_file_name+'_holdings.json','w') as f:
             fstr = '{'
@@ -194,7 +199,7 @@ class StockTransactor:
             fstr = fstr[:-1] + '\n}'       
             f.write(fstr)
 
-        fstr = f'<h1>{self.holdings_report_str(date_range).heading}</h1>\n'
+        fstr = f'<h1>{holdings_report.heading}</h1>\n'
         with open(self._o_file_name+'_holdings.html','w') as f:
             for brokerage in tables.keys():
                 fstr += f'\n<h2>{brokerage}</h2>\n'
