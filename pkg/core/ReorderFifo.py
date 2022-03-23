@@ -75,4 +75,4 @@ class ReorderFifo(Fifo):
         # First we remove the equivalent element from our wrapped Fifo
         # object before popping our proxy entry
         self.fifo._data.remove(self.head)
-        return self._data.pop(0)
+        return super().pop()
