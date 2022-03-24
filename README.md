@@ -6,6 +6,7 @@
 - Correctly determines **wash sales** including the amounts of loss disallowed by the wash-sale. Further, any disallowed wash sale amounts are then added as additional cost-basis amounts for any downstream buys of that stock
     - When a wash-sale-triggering buy is a smaller lot than the wash sale, the disallowed loss amount is only based on the number of stocks of the buy lot
     - Wash sales are analyzed across different brokerage entries as required by the tax code
+- Provision for additional basis added to stock purchase transaction description such as for ESPP disqualifying disposition (where the discount gain is reported as W-2 income and must be added to IRS reported cost-basis)
 - Provision for entering custom commands to describe events such as **stock splits**. Stock splits are retroactively applied to relevant buy lots in the input stock transaction history.
 - Provides additional output formats of the sales summary including JSON serialized output and HTML 
 - Includes a report of holdings optionally with current stock prices and resulting valuation and gain per holding (by connecting directly to the Yahoo Finance web API)

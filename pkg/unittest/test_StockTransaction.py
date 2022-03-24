@@ -8,6 +8,7 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, EITHER EXPRESSED OR IMPLIED.
 # See the License for the specific language governing permissions and limitations under the License.
 
+from audioop import add
 import unittest
 import random
 from datetime import date,timedelta
@@ -61,12 +62,12 @@ class test_StockTransaction(unittest.TestCase):
                 comm=comm,
                 brokerage=brokerage,
                 date=rand_date,
+                add_basis=add_basis,
                 lot_ids=lot_ids
             )
 
             # update post-init properties
             st.is_sold = is_sold
-            st.add_basis = add_basis
 
             self.assertEqual(st.tr_type,tr_type)
             self.assertEqual(st.ticker,ticker)

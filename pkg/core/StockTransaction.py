@@ -27,6 +27,11 @@ class StockTransaction:
             if in_dict['lot_ids']: # CSV will provide a None value as key is not optional
                 lot_ids = in_dict['lot_ids'].split(':')
 
+        add_basis = 0.0
+        if 'add_basis' in in_dict.keys(): 
+            if in_dict['add_basis']:  # CSV will provide a None value as key is not optional
+                add_basis = in_dict['add_basis']
+
         return cls(
             tr_type = str(in_dict['tr_type']),
             ticker = str(in_dict['ticker']),
@@ -35,6 +40,7 @@ class StockTransaction:
             date = str(in_dict['date']),
             comm = float(in_dict['comm']),
             brokerage = str(in_dict['brokerage']),
+            add_basis = float(add_basis),
             lot_ids = lot_ids
         )
 
@@ -47,6 +53,7 @@ class StockTransaction:
         date:str = None,
         comm:float = 0.0,
         brokerage:str = None,
+        add_basis:float = 0.0,
         lot_ids:list=[]):
 
         self.ticker = ticker
@@ -54,10 +61,10 @@ class StockTransaction:
         self.price  = price
         self.comm   = comm
         self.brokerage = brokerage
+        self.add_basis = add_basis
         self.lot_ids = lot_ids
 
         self._sold = False # Denotes that this transaction has been sold
-        self._add_basis = 0.0 # Additional basis such as from a previous wash sale
 
         if not date:
             self.date = str(datetime.date.today())
@@ -94,17 +101,6 @@ class StockTransaction:
     @is_sold.setter
     def is_sold(self,val:bool):
         self._sold = bool(val)
-
-    @property
-    def add_basis(self)->float:
-        '''
-        Returns any additional basis added to this sale such as from a previous wash sale
-        '''
-        return self._add_basis
-
-    @add_basis.setter
-    def add_basis(self,val:float):
-        self._add_basis += val
 
     @property
     def lot_id(self)->str:

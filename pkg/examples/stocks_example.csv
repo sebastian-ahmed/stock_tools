@@ -1,4 +1,4 @@
-ticker, amount, price, comm, brokerage, date, tr_type, lot_ids
+ticker, amount, price, comm, brokerage, date, tr_type, lot_ids, add_basis
 TQQQ,  100, 100,  5, MyBroker_A, 2022-03-12, buy, 0
 SPY, 100, 1000, 5, MyBroker_B, 2022-03-12, buy
 TQQQ, 25, 110, 5, MyBroker_A, 2022-04-01, buy, 1
