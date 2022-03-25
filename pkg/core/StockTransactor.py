@@ -14,6 +14,8 @@ from prettytable import PrettyTable
 import json
 import csv
 import os.path
+import hashlib
+
 from copy import deepcopy
 from datetime import date,timedelta
 from typing import Any, Tuple, Dict
@@ -687,6 +689,8 @@ class StockTransactor:
             print(f'Reading file {fname} as JSON')
             fformat = 'json'
         
+        command_strings = [] # Store for hash digest
+
         with open(fname,'r') as f:
             if fformat == 'json':
                 for line in f:
@@ -694,6 +698,7 @@ class StockTransactor:
                         dict_line = json.loads(line)
                         if list(dict_line.keys())[0] == 'cmd': # special command
                             self.process_command(dict_line['cmd'])
+                            command_strings.append(dict_line['cmd'])
                         else:
                             tr = StockTransaction.from_dict(dict_line)
                             self._file_transactions.append(tr)
@@ -703,6 +708,7 @@ class StockTransactor:
                 for line in reader:
                         if line['ticker'].startswith('!'): # Special instruction:
                             self.process_command(line['ticker'])
+                            command_strings.append(line['ticker'])
                         else:
                             tr = StockTransaction.from_dict(line)
                             self._file_transactions.append(tr)
@@ -712,6 +718,17 @@ class StockTransactor:
         # Apply amount and price adjustments for any stock splits defined in
         # the input file
         self.split_stocks()
+
+        # Generate a hash object which hashes all values of the input file. This
+        # avoids seeing changes in the hash due to spaces, comments or other formatting
+        # changes
+        hash_obj = hashlib.sha256()
+        for tr in self._file_transactions:
+            encoded = (''.join(tr.asdict().values())).encode()
+            hash_obj.update(encoded)
+        for cmd in command_strings:
+            hash_obj.update(cmd.encode())
+        print(f'INFO: Digest of input transactions and commands: {hash_obj.hexdigest()[-8:]}')        
 
         for tr in self._file_transactions:
             # When we perform the re-build, we do not add these transactions to the current
