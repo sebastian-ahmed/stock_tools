@@ -61,8 +61,10 @@ class test_SaleItem(unittest.TestCase):
             net_proceeds = amount*sale_price-comm
             gain = amount*sale_price-cost_basis-comm
             allowed_loss = 0
-            if gain < 0 and wash:
+            if wash:
                 allowed_loss = min(0,gain + dis_wash_loss)
+            else:
+                allowed_loss = min(0,gain)
             gain_per_share = gain/amount
             short_term = (date_sold - date_acquired) < timedelta(days=366) 
             self.assertEqual(sale_item.net_proceeds,net_proceeds)
