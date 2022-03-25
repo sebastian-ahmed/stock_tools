@@ -20,7 +20,7 @@ from typing import Any, Tuple, Dict
 from collections import defaultdict, namedtuple
 
 from pkg.core.StockTransaction import StockTransaction
-from pkg.core.TransactionCommands import Command_SPLIT
+from pkg.core.TransactionCommands import Command, Command_SPLIT, Command_WASHGROUP
 from pkg.core.SaleItem import SaleItem
 from pkg.core.Fifo import Fifo
 from pkg.core.ReorderFifo import ReorderFifo
@@ -89,12 +89,13 @@ class StockTransactor:
         self._i_file_name = input_file_name
         if output_file_name == None: # Required if name passed through an argparse object
             output_file_name = 'report'
-        self._o_file_name = output_file_name
-        self._buy_transactions = {} # Holds all loaded/entered buy transactions, keyed by brokerage
-        self._history = [] # Holds a buffer of this session's transactions (for interactive sessions)
-        self._sale_items = {} # Dict of dict of list of sales keyed by [brokerage][ticker]
+        self._o_file_name       = output_file_name
+        self._buy_transactions  = {} # Holds all loaded/entered buy transactions, keyed by brokerage
+        self._history           = [] # Holds a buffer of this session's transactions (for interactive sessions)
+        self._sale_items        = {} # Dict of dict of list of sales keyed by [brokerage][ticker]
         self._file_transactions = [] # Stores all transactions read from input file
-        self._splits = {} # Sequential list of SPLIT commands
+        self._splits            = {} # Sequential list of SPLIT commands objects
+        self._washgroups        = [] # List of WASHGROUP command objects
 
         # We track wash sales as we process transactions because we need to adjust the
         # costs basis of future purchases. Because wash sales cross brokerage boundaries,
@@ -615,7 +616,10 @@ class StockTransactor:
         if wash_transaction and wash_transaction != buy_tr: # Filter out the head transaction
             if sale_item.gain < 0:
                 sale_item.wash = True
-                print(f'INFO: Wash Sale detected for {sell_tr.ticker} with sale date {sell_tr.date} with wash trigger buy on {wash_transaction.date}')
+                info_str = f'INFO: Wash Sale detected for {sell_tr.ticker}'+ \
+                f' with sale date {sell_tr.date} with wash trigger buy on {wash_transaction.date}' + \
+                f' of ticker {wash_transaction.ticker}'
+                print(info_str)
 
                 # If the pre-buy or post-buy is a share amount smaller than the amount of shares in this
                 # sale, we only "wash" the amount of shares bought, not the complete sale. This is why
@@ -721,16 +725,17 @@ class StockTransactor:
 
         print(f'INFO: Encountered command: {cmd_word} with arguments {cmd_args}')
 
-        if cmd_word == 'SPLIT':
-            # arg format: ticker,split_amount,date
-            if len(cmd_args) != 3:
-                raise RuntimeError(f'Invalid number of arguments specified for SPLIT command. Expected 3, but got {len(cmd_args)}')
-            ticker = cmd_args[0]
+        if cmd_word == Command_SPLIT.command_name():
+            split_cmd = Command_SPLIT(cmd_args)
+            ticker = split_cmd.ticker
             if ticker not in self._splits:
                 self._splits[ticker] = []
-            self._splits[cmd_args[0]].append(Command_SPLIT(ticker=ticker,amount=float(cmd_args[1]),date=cmd_args[2]))
+            self._splits[ticker].append(split_cmd)
+        elif cmd_word == Command_WASHGROUP.command_name():
+            washgroup_command = Command_WASHGROUP(cmd_args)
+            self._washgroups.append(washgroup_command)
         else:
-            raise RuntimeError(f'Unsupported special command: {cmd_word}')
+            raise RuntimeError(f'Unsupported special command: {cmd_word}. Supported commands are {",".join(Command.supported_commands())}')
 
     def split_stocks(self):
         '''
@@ -791,9 +796,17 @@ class StockTransactor:
         d_plus_30 = d + timedelta(days=30)
         d_minus_30 = d - timedelta(days=30)
 
+        # This is a very brute force implementation vs building an association graph
+        # but it is unlikely this would be large enough in practive to be an issue
+        # In fact this is so brute force that the list can contain duplicate entries
+        # which is functionally correct however.
+        matches = [transaction.ticker] # Must match yourself at the least
+        for wg in self._washgroups:
+            matches += wg.matches(transaction.ticker)
+
         for tr in self._file_transactions:
             tr_date = date.fromisoformat(tr.date)
-            if tr.tr_type == 'buy' and tr_date >= d_minus_30 and tr_date <= d_plus_30 and not tr.is_sold:
+            if tr.ticker in matches and tr.tr_type == 'buy' and tr_date >= d_minus_30 and tr_date <= d_plus_30 and not tr.is_sold:
                 return tr
         return None
 
