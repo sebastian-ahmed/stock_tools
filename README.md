@@ -1,21 +1,6 @@
-# Overview
-
-`stock_tools` is a set of utilities for helping to manage multi-brokerage stock trading portfolios with the main functionality generating stock sale reporting for tax purposes. Specifically, by simply providing an input file of all stock trades of interest, `stock_tools` will generate a report of sale items with the following characteristics:
-- Supports a default sale ordering of "first-in-first-out' (FIFO) stock buys as well as support for sales which target ordering of specified buy lots
-- When a sale covers multiple prior buy lots, a discrete sale item is created for each input buy lot. This allows for breaking out parts of the sale which may be long-term vs short-term, have different cost-basis amounts, and different commissions
-- Correctly determines **wash sales** including the amounts of loss disallowed by the wash-sale. Further, any disallowed wash sale amounts are then added as additional cost-basis amounts for any downstream buys of that stock
-    - When a wash-sale-triggering buy is a smaller lot than the wash sale, the disallowed loss amount is only based on the number of stocks of the buy lot
-    - Wash sales are analyzed across different brokerage entries as required by the tax code
-- Provision for additional basis added to stock purchase transaction description such as for ESPP disqualifying disposition (where the discount gain is reported as W-2 income and must be added to IRS reported cost-basis)
-- Provision for entering custom commands to describe events such as **stock splits**. Stock splits are retroactively applied to relevant buy lots in the input stock transaction history.
-- Provides additional output formats of the sales summary including JSON serialized output and HTML 
-- Includes a report of holdings optionally with current stock prices and resulting valuation and gain per holding (by connecting directly to the Yahoo Finance web API)
-
-NOTE: Dividend re-investment plans (DRIPs) are assumed to be modelled as regular stock purchase transactions. Regular dividend payments (1099-DIV) are orthogonal to stock sale reporting and are not considered as part of `stock_tools`
-
 # Contents
-- [Overview](#overview)
 - [Contents](#contents)
+- [Overview](#overview)
 - [Usage](#usage)
   - [Required Python packages](#required-python-packages)
   - [Using the run-script](#using-the-run-script)
@@ -26,7 +11,25 @@ NOTE: Dividend re-investment plans (DRIPs) are assumed to be modelled as regular
 - [Notes about calculations](#notes-about-calculations)
 - [Special commands](#special-commands)
   - [SPLIT](#split)
+  - [WASHGROUP](#washgroup)
   - [Programmatical commands](#programmatical-commands)
+
+# Overview
+
+`stock_tools` is a set of utilities for helping to manage multi-brokerage stock trading portfolios with the main functionality generating stock sale reporting for tax purposes. Specifically, by simply providing an input file of all stock trades of interest, `stock_tools` will generate a report of sale items with the following characteristics:
+- Supports a default sale ordering of "first-in-first-out' (FIFO) stock buys as well as support for sales which target ordering of specified buy lots
+- When a sale covers multiple prior buy lots, a discrete sale item is created for each input buy lot. This allows for breaking out parts of the sale which may be long-term vs short-term, have different cost-basis amounts, and different commissions
+- Correctly determines **wash sales** including the amounts of loss disallowed by the wash-sale. Further, any disallowed wash sale amounts are then added as additional cost-basis amounts for any downstream buys of that stock
+    - When a wash-sale-triggering buy is a smaller lot than the wash sale, the disallowed loss amount is only based on the number of stocks of the buy lot
+    - Wash sales are analyzed across different brokerage entries as required by the tax code
+    - Ability to defined *wash groups* which specify tickers of securities deemed as substantially similar (this is beyond the default behavior of just checking for identical securities in declaring wash sales)
+- Provision for additional basis added to stock purchase transaction description such as for ESPP disqualifying disposition (where the discount gain is reported as W-2 income and must be added to IRS reported cost-basis)
+- Provision for entering custom commands to describe events such as **stock splits**. Stock splits are retroactively applied to relevant buy lots in the input stock transaction history.
+- Provides additional output formats of the sales summary including JSON serialized output and HTML 
+- Includes a report of holdings optionally with current stock prices and resulting valuation and gain per holding (by connecting directly to the Yahoo Finance web API)
+
+NOTE: Dividend re-investment plans (DRIPs) are assumed to be modelled as regular stock purchase transactions. Regular dividend payments (1099-DIV) are orthogonal to stock sale reporting and are not considered as part of `stock_tools`
+
 # Usage
 There are two general usage modes. The simplest and recommended mode is to to use the included top-level run-script. Advanced users may programmatically use the core processing class as part of their own custom script.
 
@@ -202,6 +205,25 @@ Consider a stock split for ticker IBM which is a 2:1 split (2 stocks created for
 ```
 
 A reverse split (where the number of resulting shares is lower) must be expressed as a decimal, e.g., a 1-for-2 split would be denoted by an amount of 0.5 
+
+## WASHGROUP
+The `WASHGROUP` command allows describing groups of tickers which should be treated as substantially similar from a wash-sale processing perspective. The format of this command is as follows:
+
+```
+!WASHGROUP#<ticker-1>#<ticker-2>#<ticker-3>#...
+```
+
+Because there is no limitation on how many tickers may form a wash-group, the number of arguments are not bounded. An example usage shows how we might define the tickers "XYZ", and "ZYX" to be considered part of a wash-group:
+- CSV:
+```
+!WASHGROUP#XYZ#ZYX
+```
+- JSON
+```json
+{cmd:"!WASHSGROUP#XYZ#ZYX"}
+```
+
+The result of this command is that when an XYZ loss sale is being processed, the wash sale analyzer will look for either XYZ or ZYX buy transactions within the wash sale window and similarly when processing a ZYX sale, the analyzer will search for both ZYX and XYZ buy transactions. This means the order of tickers within a group is irrelevant.
 
 ## Programmatical commands
 When using `stock_tools` in a programmatical way, commands may be called directly via the `StockTransactor` object as follows, where `<COMMAND>` is the full command string as described above

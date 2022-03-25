@@ -8,7 +8,8 @@
 {"ticker": "SPY", "amount": "100", "price": "500", "comm": "5", "brokerage": "MyBroker_B", "date": "2022-07-16", "tr_type": "sell"}
 {"ticker": "SPY", "amount": "25", "price": "100", "comm": "5", "brokerage": "MyBroker_B", "date": "2022-08-15", "tr_type": "buy"}
 {"ticker": "TQQQ", "amount": "50", "price": "200", "comm": "5", "brokerage": "MyBroker_A", "date": "2023-03-12", "tr_type": "sell", "lot_ids": "2:1"}
-{"ticker": "TQQQ", "amount": "50", "price": "200", "comm": "5", "brokerage": "MyBroker_A", "date": "2023-03-12", "tr_type": "sell"}
+{"ticker": "TQQQ", "amount": "50", "price": "100", "comm": "5", "brokerage": "MyBroker_A", "date": "2023-03-12", "tr_type": "sell"}
+{"ticker": "AMD", "amount": "100", "price": "105", "comm": "5", "brokerage": "MyBroker_B", "date": "2023-04-10", "tr_type": "buy"}
 {"ticker": "QCOM", "amount": "100", "price": "220", "comm": "5", "brokerage": "MyBroker_A", "date": "2023-03-15", "tr_type": "buy"}
 {"ticker": "QCOM", "amount": "100", "price": "300", "comm": "5", "brokerage": "MyBroker_A", "date": "2024-04-16", "tr_type": "buy"}
 # Special transaction commands such as stock splits can be placed anywhere in the file and can be chronologically un-ordered.
@@ -18,3 +19,6 @@
 {"cmd": "!SPLIT#QCOM#2#2025-04-15"}
 {"cmd": "!SPLIT#QCOM#10#2023-04-15"}
 {"cmd": "!SPLIT#QCOM#5#2024-04-15"}
+# This command creates a wash-sale affinity between TQQQ and AMD such that losses of TQQQ
+# could be subject to a wash sale buy trigger of AMD and vice versa
+{"cmd": "!WASHGROUP#TQQQ#AMD"}
