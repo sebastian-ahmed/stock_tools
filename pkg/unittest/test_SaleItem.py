@@ -36,7 +36,8 @@ class test_SaleItem(unittest.TestCase):
             date_acquired = date.fromisoformat(random.choice(base_dates)) + timedelta(days=random.randint(0,1000))
             date_sold = date_acquired + timedelta(days=random.randint(0,500))
             cost_basis = amount * random.random()*100
-            lot_id     = ''.join(random.choice(letters) for i in range(random.randint(3,5)))
+            comm  = random.random()*5
+            lot_id = ''.join(random.choice(letters) for i in range(random.randint(3,5)))
 
             sale_item = SaleItem(
                 brokerage=brokerage,
@@ -46,16 +47,15 @@ class test_SaleItem(unittest.TestCase):
                 date_acquired=str(date_acquired),
                 date_sold=str(date_sold),
                 cost_basis=cost_basis,
+                comm=comm,
                 lot_id=lot_id
             )
 
             wash          = bool(random.randint(0,1))
             dis_wash_loss = random.random()*20
-            comm          = random.random()*5
 
             sale_item.wash = wash
             sale_item.dis_wash_loss = dis_wash_loss
-            sale_item.comm = comm
 
             # Check resultant properties
             net_proceeds = amount*sale_price-comm

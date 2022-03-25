@@ -100,7 +100,7 @@ class StockTransactor:
         # We track wash sales as we process transactions because we need to adjust the
         # costs basis of future purchases. Because wash sales cross brokerage boundaries,
         # we only track these by ticker symbol. As such the dict below is keyed by ticker
-        self._wash_sales = defaultdict(float) # Keyed by ticker with value being that disallowed loss
+        self._wash_sales = defaultdict(float) # Keyed by ticker with value being the disallowed loss
         
         self.rebuild()
 
@@ -518,6 +518,10 @@ class StockTransactor:
             fifo = base_fifo
 
         while rem_amount > 0:
+            # We only add commission to sales items which constitute the first sale item
+            # of a sale transaction. As such we can determine this by simply checking that
+            # the current length of the working sale items list is empty
+            add_comm = len(sale_items) == 0
             if len(fifo) == 0:
                 # This is an error state because we still have remaining stock to sell, but
                 # we are out of FIFO entries for this ticker. As such as we have to rewind
@@ -531,13 +535,12 @@ class StockTransactor:
                 if not skip_history:
                     self.history_delete_last()
                 raise RuntimeError(f'Insufficient funds for sale of {transaction.amount} shares of {transaction.ticker}. Sale cancelled')
-                return
 
             elif fifo.head.amount > rem_amount:
 
                 # In this state, we partially consume the FIFO head, so we need to update its
                 # remaining amount
-                sale_items.append(self.create_sale_item(sell_tr=transaction,buy_tr=fifo.head,amount=rem_amount))
+                sale_items.append(self.create_sale_item(sell_tr=transaction,buy_tr=fifo.head,amount=rem_amount,add_comm=add_comm))
                 fifo.head.amount -= rem_amount
                 rem_amount = 0
 
@@ -548,7 +551,7 @@ class StockTransactor:
                 # it from the FIFO
                 fifo.head.is_sold = True
                 fifo.head.amount = 0
-                sale_items.append(self.create_sale_item(sell_tr=transaction,buy_tr=fifo.head,amount=rem_amount,last=True))
+                sale_items.append(self.create_sale_item(sell_tr=transaction,buy_tr=fifo.head,amount=rem_amount,buy_lot_completed=True,add_comm=add_comm))
                 popped_entries.append(fifo.pop()) 
                 rem_amount = 0
 
@@ -560,16 +563,12 @@ class StockTransactor:
                 # comprising of the cost-basis and acquisition date may be different than the
                 # next buy transaction in the FIFO
                 fifo.head.is_sold = True
-                sale_items.append(self.create_sale_item(sell_tr=transaction,buy_tr=fifo.head,amount=fifo.head.amount,last=True))
+                sale_items.append(self.create_sale_item(sell_tr=transaction,buy_tr=fifo.head,amount=fifo.head.amount,buy_lot_completed=True,add_comm=add_comm))
                 rem_amount  -= fifo.head.amount
                 popped_entries.append(fifo.pop()) 
 
         # If we got here, the sale was successful so we need to write all generated 
         # SaleItem objects to the main dict
-
-        # We apply the sales transaction object commission to the first SaleItem
-        # object.
-        sale_items[0].comm = transaction.comm
 
         for sale_item in sale_items:
             if transaction.brokerage not in self._sale_items:
@@ -580,22 +579,28 @@ class StockTransactor:
 
         
 
-    def create_sale_item(self,sell_tr:StockTransaction,buy_tr:StockTransaction,amount:float,last=False)->SaleItem:
+    def create_sale_item(self,sell_tr:StockTransaction,buy_tr:StockTransaction,amount:float,buy_lot_completed=False,add_comm=False)->SaleItem:
         '''
         Generates and returns a SaleItem object based on a sell and buy transaction and 
         the number of shares (amount) being sold at this iteration
         Modifies the sell transaction in the case of a wash sale by updating the relevant
         wash-sale fields
-        The last field indicates that this sale constitutes the remainder or entirety of 
+        The buy_lot_completed field indicates that this sale constitutes the remainder or entirety of 
         the buy transaction. When this is True, we also apply the buy transaction commission
         to the cost-basis
+        The add_comm field indicates that this sale item is the first for a given sale transaction
+        and instructs this method to add the sales commission to the generated SaleItem object
         '''
         # The cost-basis must take into account any previous wash sale disallowed amounts
         # that have not been cleared out. The commission of a fully consumed buy transaction 
         # is also added to the costs basis
         cost_basis = buy_tr.add_basis + (buy_tr.price * amount)
-        if last:
+        if buy_lot_completed:
             cost_basis += buy_tr.comm
+
+        comm = 0.0
+        if add_comm:
+            comm = sell_tr.comm
 
         sale_item = (
             SaleItem(
@@ -606,8 +611,10 @@ class StockTransactor:
                 date_acquired=buy_tr.date,
                 date_sold=sell_tr.date,
                 cost_basis=cost_basis,
+                comm=comm,
                 lot_id=buy_tr.lot_id)
         )
+
         # Check if there is a wash sale trigger.
         # NOTE: The lot which is at the head of the FIFO cannot constitute the wash
         #       sale trigger. Only buys newer than the FIFO head can

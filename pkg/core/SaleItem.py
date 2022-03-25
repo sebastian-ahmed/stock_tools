@@ -11,7 +11,8 @@
 from datetime import date
 class SaleItem:
     '''
-    Defines a completed sale which is serializable
+    Defines a completed sale item. Note that the comm argument should only
+    be non-zero for the first SaleItem of a sale transaction
     '''
 
     def __init__(
@@ -23,12 +24,14 @@ class SaleItem:
         date_acquired:str,
         date_sold:str,
         cost_basis:float,
+        comm:float=0,
         lot_id:str=None):
 
         # These fields come from initialization
         self.brokerage     = brokerage
         self.ticker        = ticker
         self.sale_price    = float(sale_price)
+        self.comm          = float(comm)
         self.amount        = float(amount)
         self.date_acquired = date_acquired
         self.date_sold     = date_sold
@@ -39,12 +42,8 @@ class SaleItem:
         # These fields should be set after initialization because this
         # object must first be able to calculate the raw loss or gain
         # Once this is known, a wash sale can be established
-        # Secondly, because a single sale transaction can generate multiple
-        # SaleItem objects, we allow the higher layer to determine to which
-        # SaleItem the sale transaction commission is applied to
         self.wash          = False
         self.dis_wash_loss = 0.0
-        self.comm          = 0.0
 
     @property
     def net_proceeds(self)->float:
