@@ -67,11 +67,13 @@ class SaleItem:
         '''
         If this sale constituted a wash sale, this property reflects the allowed
         loss after adjusting for the disallowed wash loss amount. In all other cases
-        this property will reflect 0
+        this property will reflect 0 for a gain or the full loss amount for a loss
+        The returned value is signed meaning any other number besides 0 will be
+        negative
         '''
         if self.wash and self.__raw_gain() < 0:
             return self.__raw_gain() + self.dis_wash_loss
-        return 0.0
+        return min(0,self.__raw_gain())
 
     @property
     def gain_per_share(self)->float:
