@@ -9,6 +9,7 @@
 # See the License for the specific language governing permissions and limitations under the License.
 
 import datetime
+from pkg.core.LoggingWrap import log_error
 
 class StockTransaction:
     '''
@@ -73,7 +74,7 @@ class StockTransaction:
                 try:
                     self.date = str(datetime.date.fromisoformat(date))
                 except:
-                    print(f'Provided date "{date}" is not a valid format YYYY-MM-DD')
+                    log_error(f'Provided date "{date}" is not a valid ISO format YYYY-MM-DD')
                     raise
             else:
                 raise ValueError('Date provided is not a supported type datetime.date or string ISO format YYYY-MM-DD')

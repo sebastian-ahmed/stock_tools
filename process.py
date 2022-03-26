@@ -8,9 +8,12 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, EITHER EXPRESSED OR IMPLIED.
 # See the License for the specific language governing permissions and limitations under the License.
 
+import logging
+
 from pkg.core.WinWrap import WinWrap
 from pkg.core.Cla import proc_cla
 from pkg.core.StockTransactor import StockTransactor
+from pkg.core.LoggingWrap import log_info
 
 '''
 Top-level application script which processes a stock transactions file and generates
@@ -21,7 +24,13 @@ of reports is available through programmatical use of the stock_tools core libra
 def main():
     args = proc_cla(iparser=None,descr='Stock transaction file processing script')
 
-    print(f'Running with arguments: {args}')
+    log_level = logging.INFO
+    if args.debug:
+        log_level = logging.DEBUG
+
+    logging.basicConfig(filename='process.log',encoding='utf-8', level=log_level,filemode='w',)
+
+    log_info(f'Running with arguments: {args}')
     stock_data = StockTransactor(input_file_name=args.infile,output_file_name=args.outfile)
 
     stock_data.print_report(date_range=(args.date_start,args.date_end),fetch_quotes=args.fetch_quotes)

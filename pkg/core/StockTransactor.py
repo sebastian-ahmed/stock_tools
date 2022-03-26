@@ -18,7 +18,7 @@ import hashlib
 
 from copy import deepcopy
 from datetime import date,timedelta
-from typing import Any, Tuple, Dict
+from typing import Any, Tuple
 from collections import defaultdict, namedtuple
 
 from pkg.core.StockTransaction import StockTransaction
@@ -26,6 +26,7 @@ from pkg.core.TransactionCommands import Command, Command_SPLIT, Command_WASHGRO
 from pkg.core.SaleItem import SaleItem
 from pkg.core.Fifo import Fifo
 from pkg.core.ReorderFifo import ReorderFifo
+from pkg.core.LoggingWrap import log_info, log_error
 
 ReportInfo = namedtuple('ReportInfo', ['heading', 'main_string', 'tables'])
 
@@ -433,7 +434,7 @@ class StockTransactor:
             d1 = date.fromisoformat(transaction.date)
             d2 = date.fromisoformat(fifo.tail.date)
             if d1<d2:
-                print(f'ERROR: Tried to add an older transaction with date {transaction.date}. Last transaction date is {fifo.tail.date}')
+                log_error(f'ERROR: Tried to add an older transaction with date {transaction.date}. Last transaction date is {fifo.tail.date}')
                 return
 
         # Add any past disallowed wash sale to additional basis
@@ -625,10 +626,10 @@ class StockTransactor:
         if wash_transaction and wash_transaction != buy_tr: # Filter out the head transaction
             if sale_item.gain < 0:
                 sale_item.wash = True
-                info_str = f'INFO: Wash Sale detected for {sell_tr.ticker}'+ \
+                info_str = f'Wash Sale detected for {sell_tr.ticker}'+ \
                 f' with sale date {sell_tr.date} with wash trigger buy on {wash_transaction.date}' + \
                 f' of ticker {wash_transaction.ticker}'
-                print(info_str)
+                log_info(info_str)
 
                 # If the pre-buy or post-buy is a share amount smaller than the amount of shares in this
                 # sale, we only "wash" the amount of shares bought, not the complete sale. This is why
@@ -655,7 +656,7 @@ class StockTransactor:
                 else:
                     self.sell_transaction(tr,skip_history=True)
         else:
-            print('Nothing to undo from this session')
+            log_info('Nothing to undo from this session')
 
     def rebuild(self,file_name=None,clear_history=False):
         '''
@@ -683,10 +684,10 @@ class StockTransactor:
         
         fformat = None
         if fname.endswith('.csv'): # CSV file
-            print(f'Reading file {fname} as CSV')
+            log_info(f'Reading file {fname} as CSV')
             fformat = 'csv'
         elif fname.endswith('.json'): # JSON file
-            print(f'Reading file {fname} as JSON')
+            log_info(f'Reading file {fname} as JSON')
             fformat = 'json'
         
         command_strings = [] # Store for hash digest
@@ -728,7 +729,7 @@ class StockTransactor:
             hash_obj.update(encoded)
         for cmd in command_strings:
             hash_obj.update(cmd.encode())
-        print(f'INFO: Digest of input transactions and commands: {hash_obj.hexdigest()[-8:]}')        
+        log_info(f'Digest of input transactions and commands: {hash_obj.hexdigest()[-8:]}')        
 
         for tr in self._file_transactions:
             # When we perform the re-build, we do not add these transactions to the current
@@ -747,7 +748,7 @@ class StockTransactor:
         cmd_word = cmd_full[0]
         cmd_args = cmd_full[1:]
 
-        print(f'INFO: Encountered command: {cmd_word} with arguments {cmd_args}')
+        log_info(f'Encountered command: {cmd_word} with arguments {cmd_args}')
 
         if cmd_word == Command_SPLIT.command_name():
             split_cmd = Command_SPLIT(cmd_args)
@@ -798,7 +799,7 @@ class StockTransactor:
         else:
             fname = self._i_file_name
         with open(fname,'a') as f:
-            print(f'Writing stock data to file {fname}')
+            log_info(f'Writing stock data to file {fname}')
             for tr in self._history:
                 f.write(json.dumps(tr.asdict())+'\n')
 
