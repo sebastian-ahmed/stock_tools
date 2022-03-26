@@ -27,6 +27,7 @@ from pkg.core.SaleItem import SaleItem
 from pkg.core.Fifo import Fifo
 from pkg.core.ReorderFifo import ReorderFifo
 from pkg.core.LoggingWrap import log_info, log_error
+from pkg.core.Utils import banner_wrap_str
 
 ReportInfo = namedtuple('ReportInfo', ['heading', 'main_string', 'tables'])
 
@@ -233,7 +234,7 @@ class StockTransactor:
                 raise RuntimeError(f'Specified a negative date range: from {d1} to {d2}')
 
         heading = f'SALES REPORT ({d1} to {d2})'
-        ostr = self.banner_wrap_str(heading,level=0)
+        ostr = banner_wrap_str(heading,level=0)
 
         total_proceeds = 0.0
         net_gain = 0.0
@@ -307,7 +308,7 @@ class StockTransactor:
         tables = {} # Dict of PrettyTable objects
 
         heading = f'HOLDINGS REPORT ({date.today()})'
-        ostr = self.banner_wrap_str(heading,level=0)
+        ostr = banner_wrap_str(heading,level=0)
         for brokerage in self._buy_transactions.keys():
             total_value = 0.
             total_cost_basis = 0.0
@@ -471,8 +472,8 @@ class StockTransactor:
         # There are two possible FIFO views (as defined by the variable fifo)
         # 1) The default FIFO object built up by buy transactions which reflects the 
         #    chronological first-in-first-out buy ordering
-        # 2) An alternative "proxy" FIFO which is adds a re-ordering layer to the
-        #    default FIFO to match an explicit sale schedule (i.e., when the sale
+        # 2) An alternative "proxy" FIFO which adds a re-ordering layer to the
+        #    default FIFO to match an explicit sale schedule (i.e., when the sale transaction
         #    defines the selling of specific buy lots)
 
         # First do some checking
@@ -513,6 +514,9 @@ class StockTransactor:
         # individual lots and transacting upon those in the specified order. Upon
         # exhausting a specific lot, the entry is popped broad-side. This is achieved by
         # wrapping the FIFO object and virtualizing the pop operations
+        # Otherwise we construct a proxy FIFO consisting of the specified buy lot order
+        # which also modifies the underlying FIFO. The ReorderFifo object only presents
+        # a view of buys specified in the lot_ids field of the sale transaction
         base_fifo = self._buy_transactions[transaction.brokerage][transaction.ticker]
 
         if len(transaction.lot_ids) > 0:
@@ -776,7 +780,7 @@ class StockTransactor:
         # our outer iteration is the stock splits ordered by date. This means we
         # must perform multiple passes through the _file_transactions list to 
         # update on a split by split basis. For example, if there are two splits, one on
-        # date-A and one on date-B (where date-B > date-A), is there is a buy lot of
+        # date-A and one on date-B (where date-B > date-A), if there is a buy lot of
         # that stock occuring before date-A, then it will be split twice over two passes
         for ticker in self._splits:
             for split in self._splits[ticker]:
@@ -834,34 +838,3 @@ class StockTransactor:
             if tr.ticker in matches and tr.tr_type == 'buy' and tr_date >= d_minus_30 and tr_date <= d_plus_30 and not tr.is_sold:
                 return tr
         return None
-
-    def banner_wrap_str(self,heading:str,level:int=0)->str:
-        '''
-        Returns the input string wrapped with a banner with level-0 or level-1
-        with level-0 being the biggest banner 
-        '''
-        ostr = ''
-        if level < 1:
-            ostr += '='*80 + '\n'
-            ostr += '=' + ' '*self.get_banner_margins(80,len(heading))[0]
-            ostr += heading + ' '*self.get_banner_margins(80,len(heading))[1] + '=\n'
-            ostr += '='*80 + '\n'
-        else:
-            ostr += ' '*20 + '='*40 + '\n'
-            ostr += ' '*20 + '=' + ' '*self.get_banner_margins(40,len(heading))[0]
-            ostr += heading + ' '*self.get_banner_margins(40,len(heading))[1] + '=\n'
-            ostr += ' '*20 + '='*40 + '\n'
-        return ostr
-
-    def get_banner_margins(self,banner_len:int,heading_len:int)->Tuple[int,int]:
-        '''
-        Given a heading, returns the left and right margin white-space amounts for
-        a banner of length banner_len. Returns a tuple of ints (left-gap,right-gap)
-        Assumes that the left and right extremes of the heading part of the banner
-        consume one character each. If the heading_len cannot fit into the banner_len
-        (0,0) is returned
-        '''
-        total_ws = banner_len - heading_len - 2
-        right_ws = max(0,int(total_ws/2))
-        left_ws  = max(0,total_ws - right_ws)
-        return left_ws,right_ws
