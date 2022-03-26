@@ -28,7 +28,7 @@ def main():
     if args.debug:
         log_level = logging.DEBUG
 
-    logging.basicConfig(filename='process.log',encoding='utf-8', level=log_level,filemode='w',)
+    logging.basicConfig(filename='process.log', level=log_level,filemode='w',)
 
     log_info(f'Running with arguments: {args}')
     stock_data = StockTransactor(input_file_name=args.infile,output_file_name=args.outfile)
