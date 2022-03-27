@@ -59,6 +59,14 @@
             "program" :"",
             "args": ["-m", "unittest", "pkg.unittest.test_SaleItem"],
             "console": "integratedTerminal"
+        },
+        {
+            "name": "unittest - test_StockTransactor",
+            "type" :"python",
+            "request": "launch",
+            "program" :"",
+            "args": ["-m", "unittest", "pkg.unittest.test_StockTransactor"],
+            "console": "integratedTerminal"
         }
     ]
 }
