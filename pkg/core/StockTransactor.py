@@ -233,7 +233,7 @@ class StockTransactor:
             if d2 and d1 and d2 < d1:
                 raise RuntimeError(f'Specified a negative date range: from {d1} to {d2}')
 
-        heading = f'SALES REPORT ({d1} to {d2})'
+        heading = f'SALES REPORT (Date Range: {d1} to {d2})'
         ostr = banner_wrap_str(heading,level=0)
 
         total_proceeds = 0.0
