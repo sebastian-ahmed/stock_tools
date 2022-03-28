@@ -1,0 +1,10 @@
+# This is the original purchase of 100 shares
+{"ticker": "TQQQ", "amount": "100", "price": "100", "comm": "5", "brokerage": "MyBroker_A", "date": "2022-01-01", "tr_type": "buy", "lot_ids":"0"}
+# This is the pre-buy 3 months later of 40 shares
+{"ticker": "TQQQ", "amount": "40", "price": "20", "comm": "5", "brokerage": "MyBroker_A", "date": "2022-03-01", "tr_type": "buy"}
+# Now attempt to sell original lot within 30 days of the pre-buy
+{"ticker": "TQQQ", "amount": "100", "price": "10", "comm": "5", "brokerage": "MyBroker_A", "date": "2022-03-31", "tr_type": "sell", "lot_ids":"0"}
+# This is a post-buy of 30 shares
+{"ticker": "TQQQ", "amount": "30", "price": "8", "comm": "5", "brokerage": "MyBroker_A", "date": "2022-04-20", "tr_type": "buy"}
+# This is another post-buy of 30 shares
+{"ticker": "TQQQ", "amount": "30", "price": "8", "comm": "5", "brokerage": "MyBroker_A", "date": "2022-04-22", "tr_type": "buy"}
