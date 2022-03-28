@@ -33,12 +33,14 @@ class PrettierTable(PrettyTable):
             ostr += '    <tr>\n'
             td_idx = 0
             for td in tr:
-                mod_str = ''
-                if isinstance(td,float) and td < 0:
-                    mod_str = ' style="color:#ff0000"'
+                td_mod = str(td) # default td entry
+                if self.field_names[td_idx] in ['gain','gain_per_share'] and td < 0:
+                    td_mod = '<font color="#ff0000">'+str(td)+'</font>'
                 elif self.field_names[td_idx] == 'wash' and td==True:
-                    mod_str = ' style="color:#ffa500"'
-                ostr += f'      <td{mod_str}>' + str(td) + '</td>\n'
+                    td_mod = '<font color="#ffa500">'+str(td)+'</font>'
+                elif self.field_names[td_idx] == 'allowed_loss' and td<0:
+                    td_mod = '<font color="#ffa500">'+str(td)+'</font>'
+                ostr += f'      <td>' + td_mod + '</td>\n'
                 td_idx += 1
         ostr += '    </tr>\n'
         ostr += '  </tbody>\n'
