@@ -29,6 +29,22 @@
             "console": "integratedTerminal"
         },
         {
+            "name": "process - json (fetch quotes)",
+            "type" :"python",
+            "request": "launch",
+            "program" :"process.py",
+            "args": ["--infile", "pkg/examples/stocks_example.json", "--fetch_quotes"],
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "process - csv (fetch quotes)",
+            "type" :"python",
+            "request": "launch",
+            "program" :"process.py",
+            "args": ["--infile", "pkg/examples/stocks_example.csv", "--fetch_quotes"],
+            "console": "integratedTerminal"
+        },
+        {
             "name": "examples - csv_input",
             "type" :"python",
             "request": "launch",
