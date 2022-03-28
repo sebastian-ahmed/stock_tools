@@ -9,6 +9,7 @@
 - [Example Output](#example-output)
 - [Sale ordering](#sale-ordering)
 - [Notes about calculations](#notes-about-calculations)
+  - [Wash-sales](#wash-sales)
 - [Special commands](#special-commands)
   - [SPLIT](#split)
   - [WASHGROUP](#washgroup)
@@ -184,6 +185,9 @@ As of now, there are some encoded rules in relation to gain and cost-basis calcu
 - When a sale transaction does not consume an entire buy lot, the buy transaction commission is not added to the cost basis of the buy. Only when a buy transaction is fully consumed, is the commission added to the cost basis. This also avoids double counting so that the commission is only ever applied to a single sale item.
 - *net_proceeds*, *gain* and *gain_per_share* sale item fields all take into account commissions, but do not include disallowed wash-sale amounts. If a sale is a loss with a disallowed wash amount, the reportable loss value is captured in the *allowed_loss* field (which is an absolute value)
 - Long-term designation occurs when the difference between the acquired date and sold date is greater or equal to 366 days
+
+## Wash-sales
+It is possible for the 60-day window around a wash sale to include multiple wash-sale-triggering buy transactions. Any individual triggering buy may not necessarily cover all the shares of the wash sale. There could, for example be a pre-buy and a post-buy. In such a case, both buys need to be considered in determining the disallowed wash-sale amount. For this reason, all triggering buys within the 60-day window (-30/+30 days) of a loss-sale are processed. The IRS tax code (see [here](https://www.irs.gov/publications/p550#en_US_2021_publink100010601) section "More or less stock bought than sold") species "*match the shares bought in the same order that you bought them, beginning with the first shares bought*" and as such, `stock_tools` processes triggering buys in the oldest to newest order.
 
 # Special commands
 Both examples show example usage of the stock split special command. The general format of special commands is a single field of the format

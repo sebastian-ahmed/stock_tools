@@ -17,7 +17,7 @@ import hashlib
 
 from copy import deepcopy
 from datetime import date,timedelta
-from typing import Any, Tuple
+from typing import Any, List, Tuple
 from collections import defaultdict, namedtuple
 
 from pkg.core.StockTransaction import StockTransaction
@@ -130,7 +130,7 @@ class StockTransactor:
                     val += sum([x.amount for x in self._buy_transactions[b][ticker].data])
             return val
 
-    def print_report(self,date_range:Tuple[str,str]=None,fetch_quotes=False):
+    def print_report(self,date_range:Tuple[str,str]=(None,None),fetch_quotes=False):
         '''
         Prints a report of sales and resulting holdings.
         When no date_range is specified,
@@ -152,7 +152,7 @@ class StockTransactor:
         print(self.holdings_report_str(fetch_quotes).main_string)
 
 
-    def write_report(self,date_range:Tuple[str,str]=None,fetch_quotes=False):
+    def write_report(self,date_range:Tuple[str,str]=(None,None),fetch_quotes=False):
         '''
         Writes report of sales and resulting holdings to report file.
         Also writes a JSON output of sales with extension .json and HTML
@@ -622,24 +622,35 @@ class StockTransactor:
                 lot_id=buy_tr.lot_id)
         )
 
-        # Check if there is a wash sale trigger.
+        # Check if there are any wash sale trigger buys. Note that there may be more
+        # than one, and if so, all must be processes against the corresponding wash
+        # sale to make sure all possible shares are washed
         # NOTE: The lot which is at the head of the FIFO cannot constitute the wash
         #       sale trigger. Only buys newer than the FIFO head can
         #       be considered for establishing a "pre-buy" wash sale scenario
-        wash_transaction = self.find_wash_trigger(sell_tr) 
-        if wash_transaction and wash_transaction != buy_tr: # Filter out the head transaction
-            if sale_item.gain < 0:
-                sale_item.wash = True
-                info_str = f'Wash Sale detected for {sell_tr.ticker}'+ \
-                f' with sale date {sell_tr.date} with wash trigger buy on {wash_transaction.date}' + \
-                f' of ticker {wash_transaction.ticker}'
-                log_info(info_str)
+        #       In the case of specific buy lots being sold, the head of the ReorderFIFO
+        #       is passed in as the buy_tr
+        #
+        # We process the sales in the order of oldest to newest as specified in the IRS code
+        # See: https://www.irs.gov/publications/p550#en_US_2021_publink100010601
+        wash_transactions = self.find_wash_triggers(sell_tr)
+        for wash_transaction in wash_transactions: 
+            if wash_transaction != buy_tr: # Filter out the head transaction
+                if sale_item.gain < 0:
+                    sale_item.wash = True
+                    info_str = f'Wash Sale detected for {sell_tr.ticker}'+ \
+                    f' with sale date {sell_tr.date} with wash trigger buy on {wash_transaction.date}' + \
+                    f' of ticker {wash_transaction.ticker} for {wash_transaction.amount} shares'
+                    log_info(info_str)
 
-                # If the pre-buy or post-buy is a share amount smaller than the amount of shares in this
-                # sale, we only "wash" the amount of shares bought, not the complete sale. This is why
-                # we have the "min" term.
-                sale_item.dis_wash_loss = abs(sale_item.gain_per_share * (min(amount,wash_transaction.amount)))
-                self._wash_sales[sell_tr.ticker] = sale_item.dis_wash_loss
+                    # If the pre-buy or post-buy is a share amount smaller than the amount of shares in this
+                    # sale, we only "wash" the amount of shares bought, not the complete sale. This is why
+                    # we have the "min" term.
+                    dis_wash_loss = abs(sale_item.gain_per_share * (min(amount,wash_transaction.amount)))
+                    sale_item.dis_wash_loss += dis_wash_loss
+                    #self._wash_sales[sell_tr.ticker] = sale_item.dis_wash_loss
+                    # Now add the disallowed portion of the loss to the triggering wash buy (replacement)
+                    wash_transaction.add_basis += dis_wash_loss
         
         return sale_item
 
@@ -807,17 +818,17 @@ class StockTransactor:
             for tr in self._history:
                 f.write(json.dumps(tr.asdict())+'\n')
 
-    def find_wash_trigger(self,transaction:StockTransaction)->StockTransaction:
+    def find_wash_triggers(self,transaction:StockTransaction)->List[StockTransaction]:
         '''
-        Attempts to find a candidate pre-buy or post-buy transaction in a window
+        Attempts to find all candidate pre-buy and post-buy transactions in a window
         defined by +/-30-days of the transaction sale date.
         Buys which occurred 30-days prior and have been 
         fully disposed off are not considered as wash triggers. All future
         purchases within a +30-day window are however by definition wash
         buys
 
-        If a wash buy trigger candidate is found, the potentially offending transaction 
-        is returned otherwise None is returned
+        A list of all candidate wash buy triggers are returned. If none are found,
+        and empty list is returned
         '''
         # We search the stored transactions for a match of a buy which is not
         # already sold
@@ -833,8 +844,15 @@ class StockTransactor:
         for wg in self._washgroups:
             matches += wg.matches(transaction.ticker)
 
+        # It is not sufficient to simply find the first wash triggering transaction.
+        # We must return all matching triggering buys. The reason is that a triggering
+        # buy may not account for all shares of a wash sale. There may be for example
+        # a pre-buy and a post-buy. Between the two, they may attempt to replace all
+        # shares of a wash sale, hence we find all matches and return a list of such
+        # triggering buys
+        wash_triggers = [] # The list of trigger buys
         for tr in self._file_transactions:
             tr_date = date.fromisoformat(tr.date)
             if tr.ticker in matches and tr.tr_type == 'buy' and tr_date >= d_minus_30 and tr_date <= d_plus_30 and not tr.is_sold:
-                return tr
-        return None
+                wash_triggers.append(tr)
+        return wash_triggers
