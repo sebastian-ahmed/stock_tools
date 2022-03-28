@@ -9,7 +9,6 @@
 # See the License for the specific language governing permissions and limitations under the License.
 
 import yfinance as yf
-from prettytable import PrettyTable
 
 import json
 import csv
@@ -28,6 +27,7 @@ from pkg.core.Fifo import Fifo
 from pkg.core.ReorderFifo import ReorderFifo
 from pkg.core.LoggingWrap import log_info, log_error
 from pkg.core.Utils import banner_wrap_str
+from pkg.core.PrettierTable import PrettierTable
 
 ReportInfo = namedtuple('ReportInfo', ['heading', 'main_string', 'tables'])
 
@@ -218,7 +218,7 @@ class StockTransactor:
     def sales_report_str(self,date_range:Tuple[str,str]=None)->ReportInfo:
         '''
         Returns a tuple of the heading, the sales report string for printing to screen or file
-        and the PrettyTable table object (useful for serialization)
+        and the PrettierTable table object (useful for serialization)
         '''
 
         if date_range:
@@ -240,7 +240,7 @@ class StockTransactor:
         net_gain = 0.0
         total_disallowed_wash = 0.0
         sales_list = []
-        table = PrettyTable()
+        table = PrettierTable()
         table.field_names = SaleItem.fields_list()
 
         for brokerage in self._sale_items.keys():
@@ -303,9 +303,9 @@ class StockTransactor:
     def holdings_report_str(self,fetch_quotes=False)->ReportInfo:
         '''
         Returns the current holdings report as a tuple of the headin,
-        report string and a dict of PrettyTable objects keyed by brokerage strings
+        report string and a dict of PrettierTable objects keyed by brokerage strings
         '''
-        tables = {} # Dict of PrettyTable objects
+        tables = {} # Dict of PrettierTable objects
 
         heading = f'HOLDINGS REPORT ({date.today()})'
         ostr = banner_wrap_str(heading,level=0)
@@ -314,7 +314,7 @@ class StockTransactor:
             total_cost_basis = 0.0
             net_gain = 0.
             ostr += f'\nBrokerage: {brokerage}'
-            table = PrettyTable()
+            table = PrettierTable()
             if fetch_quotes:
                 table.field_names = [
                     'ticker',
