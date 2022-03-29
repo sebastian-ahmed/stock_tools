@@ -101,11 +101,6 @@ class StockTransactor:
         self._splits            = {} # Sequential list of SPLIT commands objects
         self._washgroups        = [] # List of WASHGROUP command objects
 
-        # We track wash sales as we process transactions because we need to adjust the
-        # costs basis of future purchases. Because wash sales cross brokerage boundaries,
-        # we only track these by ticker symbol. As such the dict below is keyed by ticker
-        self._wash_sales = defaultdict(float) # Keyed by ticker with value being the disallowed loss
-        
         self.rebuild()
 
     ###########################################################################
@@ -438,10 +433,6 @@ class StockTransactor:
                 log_error(f'ERROR: Tried to add an older transaction with date {transaction.date}. Last transaction date is {fifo.tail.date}')
                 return
 
-        # Add any past disallowed wash sale to additional basis
-        transaction.add_basis += self._wash_sales[transaction.ticker]
-        self._wash_sales[transaction.ticker] = 0.0 # Clear it out since we have consumed it
-
         self._buy_transactions[transaction.brokerage][transaction.ticker].push(transaction)
 
         if not skip_history:
@@ -648,7 +639,6 @@ class StockTransactor:
                     # we have the "min" term.
                     dis_wash_loss = abs(sale_item.gain_per_share * (min(amount,wash_transaction.amount)))
                     sale_item.dis_wash_loss += dis_wash_loss
-                    #self._wash_sales[sell_tr.ticker] = sale_item.dis_wash_loss
                     # Now add the disallowed portion of the loss to the triggering wash buy (replacement)
                     wash_transaction.add_basis += dis_wash_loss
         
