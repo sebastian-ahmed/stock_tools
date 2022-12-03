@@ -12,7 +12,14 @@
 {"ticker": "AMD", "amount": "100", "price": "105", "comm": "5", "brokerage": "MyBroker_B", "date": "2023-04-10", "tr_type": "buy"}
 {"ticker": "QCOM", "amount": "100", "price": "220", "comm": "5", "brokerage": "MyBroker_A", "date": "2023-03-15", "tr_type": "buy"}
 {"ticker": "QCOM", "amount": "100", "price": "300", "comm": "5", "brokerage": "MyBroker_A", "date": "2024-04-16", "tr_type": "buy"}
-# Special transaction commands such as stock splits can be placed anywhere in the file and can be chronologically un-ordered.
+{"ticker": "TSLA", "amount": "10", "price": "50", "comm": "5", "brokerage": "MyBroker_A", "date": "2024-05-01", "tr_type": "buy"}
+{"ticker": "TSLA", "amount": "10", "price": "50", "comm": "5", "brokerage": "MyBroker_B", "date": "2024-05-02", "tr_type": "buy"}
+{"ticker": "TSLA", "amount": "5", "price": "50", "comm": "0", "brokerage": "MyBroker_A", "date": "2024-06-01", "tr_type": "sell"}
+# This command specifies global liquidation (such a occuring from a de-listing). Note that this specifies a date of delisting and amount per
+# share paid out (if any). This command must be inserted at the right place chronologically
+# This will liquidate all TSLA stock for $1 each
+{"cmd": "!LIQUIDATE#TSLA#1.0#2024-07-15"}
+# Other special transaction commands such as stock splits can be placed anywhere in the file and can be chronologically un-ordered
 # stock_tools will first read all regular stock transactions before processing commands. In the example commands
 # below we specify 3 stock split events for QCOM and we deliberately list them chronologically un-ordered.
 # For readability however, it would be recommended to place these commands in the time sequence of stock transactions above

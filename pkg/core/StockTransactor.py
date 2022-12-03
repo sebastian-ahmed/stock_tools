@@ -21,7 +21,7 @@ from typing import Any, List, Tuple
 from collections import defaultdict, namedtuple
 
 from pkg.core.StockTransaction import StockTransaction
-from pkg.core.TransactionCommands import Command, Command_SPLIT, Command_WASHGROUP
+from pkg.core.TransactionCommands import Command, Command_SPLIT, Command_LIQUIDATE, Command_WASHGROUP
 from pkg.core.SaleItem import SaleItem
 from pkg.core.Fifo import Fifo
 from pkg.core.ReorderFifo import ReorderFifo
@@ -742,7 +742,20 @@ class StockTransactor:
             if tr.tr_type == 'buy':
                 self.buy_transaction(tr,skip_history=True)
             else:
-                self.sell_transaction(tr,skip_history=True)
+                if tr.sell_all == True:
+                    valid_ticker = False # Do we have any shares of this ticker?
+                    # In this special case, we have to perform a liquidation across all
+                    # brokerages for this stock
+                    for brokerage in self._buy_transactions.keys():
+                        if tr.ticker in self._buy_transactions[brokerage]:
+                            valid_ticker = True
+                            tr.brokerage = brokerage
+                            tr.amount = self.get_num_shares(ticker=tr.ticker,brokerage=brokerage)
+                            self.sell_transaction(tr,skip_history=True)
+                    if valid_ticker==False:
+                        raise RuntimeError(f'Specified a sell-all for ticker {tr.ticker} not found in any brokerage')
+                else:
+                    self.sell_transaction(tr,skip_history=True)
 
     def process_command(self,cmd_str:str):
         '''
@@ -761,6 +774,9 @@ class StockTransactor:
             if ticker not in self._splits:
                 self._splits[ticker] = []
             self._splits[ticker].append(split_cmd)
+        elif cmd_word == Command_LIQUIDATE.command_name():
+            liquidate_cmd = Command_LIQUIDATE(cmd_args)
+            self.liquidate(liquidate_cmd)
         elif cmd_word == Command_WASHGROUP.command_name():
             washgroup_command = Command_WASHGROUP(cmd_args)
             self._washgroups.append(washgroup_command)
@@ -794,6 +810,24 @@ class StockTransactor:
                     tr.amount = tr.amount * split.amount  # scale the amount by split amount
                     tr.price  = tr.price / split.amount   # scale the per-share price by split amount
                     
+    def liquidate(self,liquidate_cmd:Command_LIQUIDATE):
+        '''
+        De-listing a stock involves an immediate liquidation of all stocks in all brokerages
+        for the specified ticker symbol.
+        '''
+        # Implementation involves performing a sale operation of all un-sold buys up to the
+        # date of the de-listing for each brokerage. We use the special sell_all field of
+        # of StockTransaction 
+        sale_tr = StockTransaction(
+            tr_type='sell',
+            ticker=liquidate_cmd.ticker,
+            amount=0, # will be ignored
+            price=liquidate_cmd.payout_per_share,
+            date=liquidate_cmd.date,
+            brokerage='__GLOBAL__', # Apply to all brokerages
+            sell_all=True)
+        self._file_transactions.append(sale_tr)
+
     def flush_to_file(self,file_name=None):
         '''
         Writes the current session trade history to the associated file name. Optionally

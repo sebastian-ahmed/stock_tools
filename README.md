@@ -12,6 +12,7 @@
   - [Wash-sales](#wash-sales)
 - [Special commands](#special-commands)
   - [SPLIT](#split)
+  - [LIQUIDATE](#liquidate)
   - [WASHGROUP](#washgroup)
   - [Programmatical commands](#programmatical-commands)
 
@@ -196,7 +197,7 @@ Both examples show example usage of the stock split special command. The general
 !<COMMAND>#arg0#arg1#arg2#...
 ```
 
-Each command has a unique number of arguments depending on the required semantics. The command lines may be placed anywhere in the input stock transaction file and in any order although it is recommended for documentation purposes that such commands are placed in chronological order along with stock transactions.
+Each command has a unique number of arguments depending on the required semantics. The command lines may be placed anywhere in the input stock transaction file unless otherwise stated and in any order unless otherwise stated although it is recommended for documentation purposes that such commands are placed in chronological order along with stock transactions.
 
 ## SPLIT
 The `SPLIT` command indicates a stock split event. The format of this command is as follows:
@@ -217,6 +218,28 @@ Consider a stock split for ticker IBM which is a 2:1 split (2 stocks created for
 ```
 
 A reverse split (where the number of resulting shares is lower) must be expressed as a decimal, e.g., a 1-for-2 split would be denoted by an amount of 0.5 
+
+## LIQUIDATE
+The `LIQUIDATE` command performs a global selling of a specified stock for all brokerages. This command is useful to model special events such as acquisitions, de-listings and other liquidation events which are not standard sales initiated by the stock holder. The format of this command is as follows:
+
+```
+!LIQUIDATE#<ticker>#<payout_per_share>#<date>
+```
+
+Unlike the `SPLIT` command, this command **must be placed in a chronologically correct order and location**.
+
+The following example shows how the TSLA stock is de-listed returning $1 per share.
+
+- CSV:
+```
+!LIQUIDATE#TSLA#1.0#2024-02-05
+```
+- JSON
+```json
+{cmd:"!LIQUIDATE#TSLA#1.0#2024-02-05"}
+```
+
+Inserting this command has the equivalent behavior of automatically generating sale transactions for each brokerage which has any held TSLA shares up to the point in the sequence where the command is specified. The sale amount specified for each generated sale transaction is equal to the total number of held shares in each brokerage. The sale price per share is equal to the *payout_per_share* command field.
 
 ## WASHGROUP
 The `WASHGROUP` command allows describing groups of tickers which should be treated as substantially similar from a wash-sale processing perspective. The format of this command is as follows:

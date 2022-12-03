@@ -56,6 +56,21 @@ class Command_SPLIT(Command):
         self.amount = float(cmd_args[1])
         self.date   = cmd_args[2]
 
+class Command_LIQUIDATE(Command):
+    '''
+    Models the global liquidation of a security which affects all buy lots in all brokerages for specified
+    security. The payout_per_share field allows specifying any remaining payouts for the security
+    '''
+    def __init__(self,cmd_args:list,*args,**kwargs):
+        super().__init__(cmd_args,*args,**kwargs)
+        # arg format: ticker,payout_per_share,date
+        if len(cmd_args) != 3:
+            raise RuntimeError(f'Invalid number of arguments for {self.command_name()} command. Expected 3, but got {len(cmd_args)}')
+
+        self.ticker = cmd_args[0]
+        self.payout_per_share = float(cmd_args[1])
+        self.date   = cmd_args[2]
+
 class Command_WASHGROUP(Command):
 
     def __init__(self,cmd_args:list,*args,**kwargs):

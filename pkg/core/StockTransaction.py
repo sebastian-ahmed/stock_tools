@@ -55,7 +55,9 @@ class StockTransaction:
         comm:float = 0.0,
         brokerage:str = None,
         add_basis:float = 0.0,
-        lot_ids:list=[]):
+        lot_ids:list=[],
+        sell_all:bool=False
+        ):
 
         self.ticker = ticker
         self.amount = amount
@@ -64,6 +66,11 @@ class StockTransaction:
         self.brokerage = brokerage
         self.add_basis = add_basis
         self.lot_ids = lot_ids
+        self.sell_all = sell_all # Only applies to tr_type=='sell'
+
+        # Checks
+        if self.sell_all == True and tr_type is not 'sell':
+            raise RuntimeError('Specified sell_all=True with a buy transaction')
 
         self._sold = False # Denotes that this transaction has been sold
 
