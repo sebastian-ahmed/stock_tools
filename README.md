@@ -26,7 +26,7 @@
     - Wash sales are analyzed across different brokerage entries as required by the tax code
     - Ability to define *wash groups* which specify tickers of securities deemed as substantially similar (this is beyond the default behavior of just checking for identical securities in declaring wash sales)
 - Provision for additional basis added to stock purchase transaction description such as for ESPP disqualifying disposition (where the discount gain is reported as W-2 income and must be added to IRS reported cost-basis)
-- Provision for entering custom commands to describe events such as **stock splits**. Stock splits are retroactively applied to relevant buy lots in the input stock transaction history.
+- Provision for entering custom commands to describe events such as **stock splits** and **liquidations** (e.g., acquisition, ETF func closure, etc). Stock splits are retroactively applied to relevant buy lots in the input stock transaction history.
 - Provides additional output formats of the sales summary including JSON serialized output and HTML 
 - Includes a report of holdings optionally with current stock prices and resulting valuation and gain per holding (by connecting directly to the Yahoo Finance web API)
 - Performs checking of chronological order of transactions in input file
