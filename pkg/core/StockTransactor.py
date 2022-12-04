@@ -351,7 +351,7 @@ class StockTransactor:
                         total_value += current_value
                     else:
                         table.add_row([ticker,tr.amount,round(cost_basis,2),round(tr.add_basis,2)])
-                    ostr += '\n'
+            ostr += '\n'
             ostr += table.get_string() + '\n'
             if fetch_quotes:
                 net_gain = total_value - total_cost_basis
