@@ -21,6 +21,14 @@
             "console": "integratedTerminal"
         },
         {
+            "name": "process - transactions.json",
+            "type" :"python",
+            "request": "launch",
+            "program" :"process.py",
+            "args": ["--infile", "./transactions.json", "--fetch_quotes"],
+            "console": "integratedTerminal"
+        },
+        {
             "name": "process - csv",
             "type" :"python",
             "request": "launch",
