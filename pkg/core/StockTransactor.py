@@ -332,7 +332,7 @@ class StockTransactor:
                 ytickers = yf.Tickers(tickers)
             for ticker in tickers:
                 if fetch_quotes:
-                    current_price = ytickers.tickers[ticker].info["regularMarketPrice"]
+                    current_price = ytickers.tickers[ticker].fast_info["last_price"]
                 for tr in self._buy_transactions[brokerage][ticker].data:
                     cost_basis = tr.price * tr.amount + tr.add_basis
                     if fetch_quotes:
