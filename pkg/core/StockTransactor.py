@@ -629,7 +629,7 @@ class StockTransactor:
         wash_transactions = self.find_wash_triggers(sell_tr)
         for wash_transaction in wash_transactions: 
             if wash_transaction != buy_tr: # Filter out the head transaction
-                if sale_item.gain < 0:
+                if amount >0 and sale_item.gain < 0:
                     sale_item.wash = True
                     info_str = f'Wash Sale detected for {sell_tr.ticker}'+ \
                     f' with sale date {sell_tr.date} with wash trigger buy on {wash_transaction.date}' + \
@@ -639,7 +639,12 @@ class StockTransactor:
                     # If the pre-buy or post-buy is a share amount smaller than the amount of shares in this
                     # sale, we only "wash" the amount of shares bought, not the complete sale. This is why
                     # we have the "min" term.
-                    dis_wash_loss = abs(sale_item.gain_per_share * (min(amount,wash_transaction.amount)))
+                    # Also, there may be multiple was trigger buys in the +/-30 day vicinity of the sales
+                    # so we need to remove the amount of shares washed per iteration for each trigger. This
+                    # is why we reduce the "amount" variable by the number of shares washed in this iteration
+                    shares_to_wash = min(amount,wash_transaction.amount)
+                    dis_wash_loss = abs(sale_item.gain_per_share * shares_to_wash)
+                    amount -= min(amount,wash_transaction.amount)
                     sale_item.dis_wash_loss += dis_wash_loss
                     # Now add the disallowed portion of the loss to the triggering wash buy (replacement)
                     wash_transaction.add_basis += dis_wash_loss
