@@ -237,6 +237,7 @@ class StockTransactor:
         sales_list = []
         table = PrettierTable()
         table.field_names = SaleItem.fields_list()
+        sales_count = 0 # Tracks the count for all sales in specified date-range
 
         for brokerage in self._sale_items.keys():
             #ostr += f'\nBrokerage: {brokerage}'
@@ -272,9 +273,7 @@ class StockTransactor:
                 total_proceeds += sum([x.net_proceeds for x in sales_list])
                 total_disallowed_wash += sum([x.dis_wash_loss for x in sales_list])
                 net_gain += sum([x.gain for x in sales_list])
-                if len(sales_list) == 0:
-                    ostr += 'No sales were found given the criteria\n'
-                    continue
+                sales_count += len(sales_list)
                 for sale in sales_list:
                     values_list = []
                     for x in SaleItem.fields_list():
@@ -284,7 +283,7 @@ class StockTransactor:
                         else:
                             values_list.append(attr_val)
                     table.add_row(values_list)
-        if len(sales_list)>0:
+        if sales_count>0:
             ostr += '\n' + str(table) + '\n'
             ostr += f'\nTotal proceeds                = ${total_proceeds}\n'
             ostr += f'Net gain (raw)                = ${net_gain}\n'
