@@ -45,6 +45,14 @@
             "console": "integratedTerminal"
         },
         {
+            "name": "process - json (fetch quotes personal)",
+            "type" :"python",
+            "request": "launch",
+            "program" :"process.py",
+            "args": ["--infile", "transactions.json", "--fetch_quotes", "--date_start", "2023-01-01"],
+            "console": "integratedTerminal"
+        },
+        {
             "name": "process - csv (fetch quotes)",
             "type" :"python",
             "request": "launch",
