@@ -885,5 +885,11 @@ class StockTransactor:
         for tr in self._file_transactions:
             tr_date = date.fromisoformat(tr.date)
             if tr.ticker in matches and tr.tr_type == 'buy' and tr_date >= d_minus_30 and tr_date <= d_plus_30 and not tr.is_sold:
-                wash_triggers.append(tr)
+                if tr.exclude_wash:
+                    info_str = f'"exclude_wash" directive detected for {tr.ticker}'+ \
+                    f' with buy date {tr.date} with wash trigger buy on {tr.date}' + \
+                    f' for {tr.amount} shares'
+                    log_info(info_str)
+                else:
+                    wash_triggers.append(tr)
         return wash_triggers

@@ -25,6 +25,7 @@
     - When a wash-sale-triggering buy is a smaller lot than the wash sale, the disallowed loss amount is only based on the number of stocks of the buy lot
     - Wash sales are analyzed across different brokerage entries as required by the tax code
     - Ability to define *wash groups* which specify tickers of securities deemed as substantially similar (this is beyond the default behavior of just checking for identical securities in declaring wash sales)
+    - Ability to mark certain buys as excluded from triggering wash sales. This is useful when marking RSU acquisition as a "buy". Such acquisitions do not actually constitute regular buys which can be considered as wash-sale replacement buys
 - Provision for additional basis added to stock purchase transaction description such as for ESPP disqualifying disposition (where the discount gain is reported as W-2 income and must be added to IRS reported cost-basis)
 - Provision for entering custom commands to describe events such as **stock splits** and **liquidations** (e.g., acquisition, ETF fund closure, etc). Stock splits are retroactively applied to relevant buy lots in the input stock transaction history.
 - Provides additional output formats of the sales summary including JSON serialized output and HTML 
@@ -189,6 +190,8 @@ As of now, there are some encoded rules in relation to gain and cost-basis calcu
 
 ## Wash-sales
 It is possible for the 60-day window around a wash sale to include multiple wash-sale-triggering buy transactions. Any individual triggering buy may not necessarily cover all the shares of the wash sale. There could, for example be a pre-buy and a post-buy. In such a case, both buys need to be considered in determining the disallowed wash-sale amount. For this reason, all triggering buys within the 60-day window (-30/+30 days) of a loss-sale are processed. The IRS tax code (see [here](https://www.irs.gov/publications/p550#en_US_2021_publink100010601) section "More or less stock bought than sold") species "*match the shares bought in the same order that you bought them, beginning with the first shares bought*" and as such, `stock_tools` processes triggering buys in the oldest to newest order.
+
+In cases (such as RSU acquisition buys), it may be necessary to exclude certain buys from being considered in wash-sale processing. This can be achieved by added the `"exclude_wash":true` field into the JSON entry
 
 # Special commands
 Both examples show example usage of the stock split special command. The general format of special commands is a single field of the format

@@ -33,6 +33,11 @@ class StockTransaction:
             if in_dict['add_basis']:  # CSV will provide a None value as key is not optional
                 add_basis = in_dict['add_basis']
 
+        if 'exclude_wash' in in_dict.keys():
+            exclude_wash =  bool(in_dict['exclude_wash'])
+        else:
+            exclude_wash = False
+
         return cls(
             tr_type = str(in_dict['tr_type']),
             ticker = str(in_dict['ticker']),
@@ -42,7 +47,8 @@ class StockTransaction:
             comm = float(in_dict['comm']),
             brokerage = str(in_dict['brokerage']),
             add_basis = float(add_basis),
-            lot_ids = lot_ids
+            lot_ids = lot_ids,
+            exclude_wash=exclude_wash
         )
 
     def __init__(
@@ -56,6 +62,7 @@ class StockTransaction:
         brokerage:str = None,
         add_basis:float = 0.0,
         lot_ids:list=[],
+        exclude_wash:bool=False,
         sell_all:bool=False
         ):
 
@@ -66,6 +73,7 @@ class StockTransaction:
         self.brokerage = brokerage
         self.add_basis = add_basis
         self.lot_ids = lot_ids
+        self.exclude_wash = exclude_wash
         self.sell_all = sell_all # Only applies to tr_type=='sell'
 
         # Checks
