@@ -33,8 +33,8 @@ def main():
     log_info(f'Running with arguments: {args}')
     stock_data = StockTransactor(input_file_name=args.infile,output_file_name=args.outfile)
 
-    stock_data.print_report(date_range=(args.date_start,args.date_end),fetch_quotes=args.fetch_quotes)
-    stock_data.write_report(date_range=(args.date_start,args.date_end),fetch_quotes=args.fetch_quotes)
+    stock_data.print_report(date_range=(args.date_start,args.date_end),fetch_quotes=args.fetch_quotes,expanded=args.expanded)
+    stock_data.write_report(date_range=(args.date_start,args.date_end),fetch_quotes=args.fetch_quotes,expanded=args.expanded)
 
 if __name__ == '__main__':
     with WinWrap(main) as wmain:

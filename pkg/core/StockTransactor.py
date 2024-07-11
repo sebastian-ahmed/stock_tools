@@ -125,7 +125,7 @@ class StockTransactor:
                     val += sum([x.amount for x in self._buy_transactions[b][ticker].data])
             return val
 
-    def print_report(self,date_range:Tuple[str,str]=(None,None),fetch_quotes=False):
+    def print_report(self,date_range:Tuple[str,str]=(None,None),fetch_quotes=False,expanded=False):
         '''
         Prints a report of sales and resulting holdings.
         When no date_range is specified,
@@ -142,12 +142,16 @@ class StockTransactor:
         Setting fetch_quotes=True will add current values for
         the holdings section of the report. This requires an internet
         connection and can cause delays in report generation
+
+        Setting expanded=True will create a line-item for each individual lot
+        for each ticker. The default behavior is to create a summary for each
+        ticker per brokerage
         '''
         print(self.sales_report_str(date_range).main_string)
-        print(self.holdings_report_str(fetch_quotes).main_string)
+        print(self.holdings_report_str(fetch_quotes=fetch_quotes,expanded=expanded).main_string)
 
 
-    def write_report(self,date_range:Tuple[str,str]=(None,None),fetch_quotes=False):
+    def write_report(self,date_range:Tuple[str,str]=(None,None),fetch_quotes=False,expanded=False):
         '''
         Writes report of sales and resulting holdings to report file.
         Also writes a JSON output of sales with extension .json and HTML
@@ -167,11 +171,15 @@ class StockTransactor:
         Setting fetch_quotes=True will add current values for
         the holdings section of the report. This requires an internet
         connection and can cause delays in report generation
+
+        Setting expanded=True will create a line-item for each individual lot
+        for each ticker. The default behavior is to create a summary for each
+        ticker per brokerage
         '''
 
         # Prime the reports to avoid re-processing time-consuming operations
         sales_report = self.sales_report_str(date_range)
-        holdings_report = self.holdings_report_str(fetch_quotes)
+        holdings_report = self.holdings_report_str(fetch_quotes=fetch_quotes,expanded=expanded)
 
 
         # Unified text report
@@ -294,9 +302,9 @@ class StockTransactor:
 
         return ReportInfo(heading, ostr,table)
 
-    def holdings_report_str(self,fetch_quotes=False)->ReportInfo:
+    def holdings_report_str(self,fetch_quotes=False,expanded=False)->ReportInfo:
         '''
-        Returns the current holdings report as a tuple of the headin,
+        Returns the current holdings report as a tuple of the headings
         report string and a dict of PrettierTable objects keyed by brokerage strings
         '''
         tables = {} # Dict of PrettierTable objects
@@ -337,27 +345,60 @@ class StockTransactor:
                     # that may no longer exist
                     if len(self._buy_transactions[brokerage][ticker])>0:
                         current_price = ytickers.tickers[ticker].fast_info["last_price"]
+                sum_amount = 0
+                sum_adjusted_gain = 0
+                sum_cost_basis = 0
+                sum_add_basis = 0
                 for tr in self._buy_transactions[brokerage][ticker].data:
                     cost_basis = tr.price * tr.amount + tr.add_basis
+
+                    sum_amount        += tr.amount
+                    sum_cost_basis    += cost_basis
+                    sum_add_basis     += tr.add_basis
+
                     if fetch_quotes:
                         current_value = current_price * tr.amount
                         current_gain  = tr.amount*(current_price-tr.price)
                         current_gain_pct = round(100* current_gain/cost_basis,2)
                         current_adjusted_gain = current_gain - tr.add_basis
                         current_adjusted_gain_pct = round(100*current_adjusted_gain/cost_basis,2)
+                        if expanded:
+                            table.add_row([
+                                ticker,
+                                tr.amount,
+                                round(cost_basis,2),
+                                round(tr.add_basis,2),
+                                round(current_price,3),
+                                round(current_value,2),
+                                f'{round(current_gain,2)} ({current_gain_pct}%)',
+                                f'{round(current_adjusted_gain,2)} ({current_adjusted_gain_pct}%)'])
+                        total_cost_basis += cost_basis
+                        total_value += current_value
+
+                        sum_adjusted_gain += current_adjusted_gain
+                    else:
+                        if expanded:
+                            table.add_row([ticker,tr.amount,round(cost_basis,2),round(tr.add_basis,2)])
+                if not expanded:
+                    if fetch_quotes and sum_amount > 0:
+                        current_value = current_price * sum_amount
+                        current_gain  = sum_amount*(current_price)-sum_cost_basis
+                        current_gain_pct = round(100* current_gain/sum_cost_basis,2)
+                        current_adjusted_gain = current_gain - sum_add_basis
+                        current_adjusted_gain_pct = round(100*current_adjusted_gain/sum_cost_basis,2)
+
                         table.add_row([
                             ticker,
-                            tr.amount,
-                            round(cost_basis,2),
-                            round(tr.add_basis,2),
-                            current_price,
+                            sum_amount,
+                            round(sum_cost_basis,2),
+                            round(sum_add_basis,2),
+                            round(current_price,3),
                             round(current_value,2),
                             f'{round(current_gain,2)} ({current_gain_pct}%)',
                             f'{round(current_adjusted_gain,2)} ({current_adjusted_gain_pct}%)'])
-                        total_cost_basis += cost_basis
-                        total_value += current_value
                     else:
-                        table.add_row([ticker,tr.amount,round(cost_basis,2),round(tr.add_basis,2)])
+                        if sum_amount > 0:
+                            table.add_row([ticker,sum_amount,round(sum_cost_basis,2),round(sum_add_basis,2)])
             ostr += '\n'
             ostr += table.get_string() + '\n'
             if fetch_quotes:
