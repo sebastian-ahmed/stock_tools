@@ -359,9 +359,9 @@ class StockTransactor:
                     if fetch_quotes:
                         current_value = current_price * tr.amount
                         current_gain  = tr.amount*(current_price-tr.price)
-                        current_gain_pct = round(100* current_gain/cost_basis,2)
+                        current_gain_pct = 100* current_gain/cost_basis
                         current_adjusted_gain = current_gain - tr.add_basis
-                        current_adjusted_gain_pct = round(100*current_adjusted_gain/cost_basis,2)
+                        current_adjusted_gain_pct = 100*current_adjusted_gain/cost_basis
                         if expanded:
                             table.add_row([
                                 ticker,
@@ -370,8 +370,8 @@ class StockTransactor:
                                 round(tr.add_basis,2),
                                 round(current_price,3),
                                 round(current_value,2),
-                                f'{round(current_gain,2)} ({current_gain_pct}%)',
-                                f'{round(current_adjusted_gain,2)} ({current_adjusted_gain_pct}%)'])
+                                f'{round(current_gain,2)} ({round(current_gain_pct,2)}%)',
+                                f'{round(current_adjusted_gain,2)} ({round(current_adjusted_gain_pct,2)}%)'])
                         total_cost_basis += cost_basis
                         total_value += current_value
 
@@ -383,9 +383,9 @@ class StockTransactor:
                     if fetch_quotes and sum_amount > 0:
                         current_value = current_price * sum_amount
                         current_gain  = sum_amount*(current_price)-sum_cost_basis
-                        current_gain_pct = round(100* current_gain/sum_cost_basis,2)
+                        current_gain_pct = 100* current_gain/sum_cost_basis
                         current_adjusted_gain = current_gain - sum_add_basis
-                        current_adjusted_gain_pct = round(100*current_adjusted_gain/sum_cost_basis,2)
+                        current_adjusted_gain_pct = 100*current_adjusted_gain/sum_cost_basis
 
                         table.add_row([
                             ticker,
@@ -394,8 +394,8 @@ class StockTransactor:
                             round(sum_add_basis,2),
                             round(current_price,3),
                             round(current_value,2),
-                            f'{round(current_gain,2)} ({current_gain_pct}%)',
-                            f'{round(current_adjusted_gain,2)} ({current_adjusted_gain_pct}%)'])
+                            f'{round(current_gain,2)} ({round(current_gain_pct,2)}%)',
+                            f'{round(current_adjusted_gain,2)} ({round(current_adjusted_gain_pct,2)}%)'])
                     else:
                         if sum_amount > 0:
                             table.add_row([ticker,sum_amount,round(sum_cost_basis,2),round(sum_add_basis,2)])
