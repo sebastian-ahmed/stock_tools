@@ -331,7 +331,12 @@ class StockTransactor:
                 ytickers = yf.Tickers(tickers)
             for ticker in tickers:
                 if fetch_quotes:
-                    current_price = ytickers.tickers[ticker].fast_info["last_price"]
+                    # Pre-filter the ticker if FIFO is empty. This helps in cases where an older
+                    # ticker was previously sold and disappeared (e.g., due to a merger or liquidation)
+                    # Pre-filtering avoids the possibility of performing a yfinance lookup on a ticker
+                    # that may no longer exist
+                    if len(self._buy_transactions[brokerage][ticker])>0:
+                        current_price = ytickers.tickers[ticker].fast_info["last_price"]
                 for tr in self._buy_transactions[brokerage][ticker].data:
                     cost_basis = tr.price * tr.amount + tr.add_basis
                     if fetch_quotes:
@@ -576,8 +581,6 @@ class StockTransactor:
             if transaction.ticker not in self._sale_items[transaction.brokerage]:
                 self._sale_items[transaction.brokerage][transaction.ticker] = []
             self._sale_items[transaction.brokerage][transaction.ticker].append(sale_item)
-
-        
 
     def create_sale_item(self,sell_tr:StockTransaction,buy_tr:StockTransaction,amount:float,buy_lot_completed=False,add_comm=False)->SaleItem:
         '''
